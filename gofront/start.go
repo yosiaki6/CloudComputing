@@ -156,7 +156,11 @@ func main(){
   defer stmtOut.Close()
   */
 
-  listener,_:= net.Listen("tcp",":9000")
+  listener,err:= net.Listen("tcp","127.0.0.1:9001")
+  if err != nil {
+    fmt.Println(err)
+    return
+  }
   cache = make(map[string]string)
   max_cache_size = 10000
   srv := new(FastCGIServer)
