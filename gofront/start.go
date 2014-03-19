@@ -86,11 +86,10 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
     fmt.Println(err)
     return
   }
-  defer hbclient.Close()
 
   // Prepare input
   table := "tweets"
-  user_id := req.FormValue("user_id")
+  user_id := req.FormValue("userid")
   raw_tweet_time := req.FormValue("tweet_time")
   tokens := strings.Split(raw_tweet_time, " ")
   tweet_time := strings.Join(tokens, "+")
@@ -105,11 +104,13 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
     if data != nil && len(data) == 1 {
       str := string(data[0].Value)
       arr := strings.Split(str, ";")
-      out := strings.Join(arr, "\n")
+      arr = arr[0:len(arr)-1]
+      out := strings.Join(arr, "\n") + "\n"
       buffer.WriteString(out)
     }
   }
 
+  hbclient.Close()
   resp.Write([]byte(buffer.String()))
 }
 
