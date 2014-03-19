@@ -1,16 +1,16 @@
 package main
 
 import (
-"net"
-"net/http"
-"net/http/fcgi"
-"bytes"
-"fmt"
-"database/sql"
-_ "github.com/go-sql-driver/mysql"
-"strings"
-"time"
-"github.com/sdming/goh"
+  "net"
+  "net/http"
+  "net/http/fcgi"
+  "bytes"
+  "fmt"
+  "database/sql"
+  //"github.com/go-sql-driver/mysql"
+  "strings"
+  "time"
+  "github.com/sdming/goh"
 )
 
 type FastCGIServer struct{}
@@ -25,6 +25,7 @@ var cache_keys []string
 var max_cache_size int
 var delete_cache_key string
 
+//var hbclient *goh.HClient
 
 func (s FastCGIServer) query_mysql(resp http.ResponseWriter, req *http.Request) {
   var buffer bytes.Buffer
@@ -72,47 +73,44 @@ func (s FastCGIServer) query_hbase(resp http.ResponseWriter, req *http.Request) 
   var buffer bytes.Buffer
   buffer.WriteString("GiraffeLovers,3823-5293-0215\n")
 
-  address := "ec2-54-85-129-90.compute-1.amazonaws.com:9090"
-  fmt.Println(address)
+  // Connect to HBase
+  address := "ec2-54-85-145-245.compute-1.amazonaws.com:9090"
 
-  client, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
+  hbclient, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
   if err != nil {
     fmt.Println(err)
     return
   }
 
-  if err = client.Open(); err != nil {
+  if err = hbclient.Open(); err != nil {
     fmt.Println(err)
     return
   }
 
-  defer client.Close()
+  // Prepare input
+  table := "tweets"
+  user_id := req.FormValue("user_id")
+  raw_tweet_time := req.FormValue("tweet_time")
+  tokens := strings.Split(raw_tweet_time, " ")
+  tweet_time := strings.Join(tokens, "+")
+  row_key := user_id + "|" + tweet_time
+  // fmt.Println("Query " + row_key)
 
-  table := "5tweets"
-
-  rows := make([][]byte, 2)
-  rows[0] = []byte("214445161|2014-01-23+23:06:26")
-
-  fmt.Print("GetRows:")
-  if data, err := client.GetRows(table, rows, nil); err != nil {
+  // Query
+  if data, err := hbclient.Get(table, []byte(row_key), "tweet_id", nil); err != nil {
     fmt.Println(err)
   } else {
-
-    // printRows
-    if data == nil {
-      buffer.WriteString("<nil>")
+    if data != nil && len(data) == 1 {
+      str := string(data[0].Value)
+      arr := strings.Split(str, ";")
+      arr = arr[0:len(arr)-1]
+      out := strings.Join(arr, "\n")
+      buffer.WriteString(out)
     }
-
-    for _, x := range data {
-      for k, v := range x.Columns {
-        buffer.WriteString(fmt.Sprintf("%s %s %d\n", k, string(v.Value), v.Timestamp))
-      }
-    }
-    // ===
-
   }
 
   resp.Write([]byte(buffer.String()))
+
 }
 
 
@@ -125,14 +123,11 @@ func (s FastCGIServer) q1(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (s FastCGIServer) q2(resp http.ResponseWriter, req *http.Request) {
-  fmt.Printf("%s\n\n",req.URL.Path)
-
   // s.query_mysql(resp, req)
   s.query_hbase(resp, req)
 }
 
 func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-//func q2(resp http.ResponseWriter, req *http.Request) {
   switch(req.URL.Path){
   case "/q1":
     s.q1(resp, req)
@@ -164,5 +159,6 @@ func main(){
   cache = make(map[string]string)
   max_cache_size = 10000
   srv := new(FastCGIServer)
+
   fcgi.Serve(listener, srv)
 }
