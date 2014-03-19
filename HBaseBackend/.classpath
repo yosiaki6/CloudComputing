@@ -13,5 +13,6 @@
 	<classpathentry kind="lib" path="lib/slf4j-api-1.4.3.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-log4j12-1.4.3.jar"/>
 	<classpathentry kind="lib" path="lib/zookeeper-3.4.5.jar"/>
+	<classpathentry kind="lib" path="lib/protobuf-java-2.4.0a.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
