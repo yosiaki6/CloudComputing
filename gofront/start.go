@@ -27,7 +27,7 @@ var max_cache_size int
 var delete_cache_key string
 
 //var hbclient *goh.HClient
-var hbase_address string
+var db_address string
 
 func query_mysql(resp http.ResponseWriter, req *http.Request) {
   var buffer bytes.Buffer
@@ -76,7 +76,7 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
   buffer.WriteString("GiraffeLovers,3823-5293-0215\n")
 
   // Connect to HBase
-  address := fmt.Sprintf("%s:9090", hbase_address)
+  address := fmt.Sprintf("%s:9090", db_address)
   hbclient, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
   if err != nil {
     fmt.Print("NewTcpClient error :: ")
@@ -132,7 +132,7 @@ func q2(resp http.ResponseWriter, req *http.Request) {
 
 func connect_hbase() {
   // Connect to HBase
-  address := fmt.Sprintf("%s:9090", hbase_address)
+  address := fmt.Sprintf("%s:9090", db_address)
 
   hbclient, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
   if err != nil {
@@ -155,7 +155,15 @@ func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main(){
-  /*
+ 
+  if len(os.Args) < 2 {
+    fmt.Println("PROGRAM <db_address>")
+    return
+  }
+  db_address = os.Args[1]
+  fmt.Printf("Database address: %s\n", db_address)
+
+ /*
   db, err = sql.Open("mysql", "root:tobymlab@tcp/cloud")
   if err != nil {
     panic(err.Error())  // Just for example purpose. You should use proper error handling instead of panic
@@ -168,12 +176,6 @@ func main(){
   }
   defer stmtOut.Close()
   */
-
-  if len(os.Args) < 2 {
-    fmt.Println("PROGRAM <hbase_address>")
-    return
-  }
-  hbase_address = os.Args[1]
 
   listener,err:= net.Listen("tcp","127.0.0.1:9001")
   if err != nil {
