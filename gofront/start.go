@@ -11,6 +11,7 @@ import (
   "strings"
   "time"
   "github.com/sdming/goh"
+  "os"
 )
 
 type FastCGIServer struct{}
@@ -26,6 +27,7 @@ var max_cache_size int
 var delete_cache_key string
 
 //var hbclient *goh.HClient
+var hbase_address string
 
 func query_mysql(resp http.ResponseWriter, req *http.Request) {
   var buffer bytes.Buffer
@@ -74,7 +76,7 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
   buffer.WriteString("GiraffeLovers,3823-5293-0215\n")
 
   // Connect to HBase
-  address := "ec2-54-85-145-245.compute-1.amazonaws.com:9090"
+  address := fmt.Sprintf("%s:9090", hbase_address)
   hbclient, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
   if err != nil {
     fmt.Print("NewTcpClient error :: ")
@@ -130,7 +132,7 @@ func q2(resp http.ResponseWriter, req *http.Request) {
 
 func connect_hbase() {
   // Connect to HBase
-  address := "ec2-54-85-145-245.compute-1.amazonaws.com:9090"
+  address := fmt.Sprintf("%s:9090", hbase_address)
 
   hbclient, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
   if err != nil {
@@ -166,6 +168,12 @@ func main(){
   }
   defer stmtOut.Close()
   */
+
+  if len(os.Args) < 2 {
+    fmt.Println("PROGRAM <hbase_address>")
+    return
+  }
+  hbase_address = os.Args[1]
 
   listener,err:= net.Listen("tcp","127.0.0.1:9001")
   if err != nil {
