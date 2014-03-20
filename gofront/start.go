@@ -7,7 +7,7 @@ import (
   "bytes"
   "fmt"
   "database/sql"
-  //"github.com/go-sql-driver/mysql"
+  _ "github.com/go-sql-driver/mysql"
   "strings"
   "time"
   "github.com/sdming/goh"
@@ -17,8 +17,9 @@ import (
 type FastCGIServer struct{}
 type ApiHandler struct{}
 
-var db *sql.DB
-var stmtOut *sql.Stmt
+// MySQL
+var mysql_db *sql.DB
+var statement *sql.Stmt
 var tweet_id string
 var err error
 var cache map[string] string
@@ -26,27 +27,36 @@ var cache_keys []string
 var max_cache_size int
 var delete_cache_key string
 
-//var hbclient *goh.HClient
+// HBase
+var hbase_client *goh.HClient
+
+var db_type string
 var db_address string
+var default_header = "GiraffeLovers,5148-7320-2582\n"
 
 func query_mysql(resp http.ResponseWriter, req *http.Request) {
   var buffer bytes.Buffer
-  buffer.WriteString("GiraffeLovers,3823-5293-0215\n")
-  user_id := req.FormValue("user_id")
+  buffer.WriteString(default_header)
+  user_id := req.FormValue("userid")
   tweet_time := req.FormValue("tweet_time")
-  tweet_time = strings.Replace( tweet_time, " ", "+",1)
+  tweet_time = strings.Replace(tweet_time, " ", "+", 1)
+
+  // Check for cached result
   cache_key := user_id + "_" + tweet_time
   result, ok := cache[cache_key]
   if ok {
-     //fmt.Printf("OK:%d\n", len(cache))
+    // Cache hit. Reply result from the cache
+    //fmt.Printf("OK:%d\n", len(cache))
     resp.Write([]byte(result))
   } else {
+    // Cache miss. Query result from the database
     if err != nil {
-      panic(err.Error()) // proper error handling instead of panic in your app
+      fmt.Println("Cache error :: " + err.Error())
+      return
     }
-    rows, err := stmtOut.Query(user_id, tweet_time)
+    rows, err := statement.Query(user_id, tweet_time)
     if err != nil {
-      panic(err.Error()) // proper error handling instead of panic in your app
+      fmt.Println("Prepared statement error :: " + err.Error())
       return
     }
 
@@ -54,10 +64,8 @@ func query_mysql(resp http.ResponseWriter, req *http.Request) {
       err = rows.Scan(&tweet_id)
       if err != nil {
         panic(err.Error())
-        return
       }
-      buffer.WriteString(tweet_id)
-      buffer.WriteString("\n")
+      buffer.WriteString(tweet_id + "\n")
     }
 
     if( len(cache) >= max_cache_size ){
@@ -73,20 +81,22 @@ func query_mysql(resp http.ResponseWriter, req *http.Request) {
 
 func query_hbase(resp http.ResponseWriter, req *http.Request) {
   var buffer bytes.Buffer
-  buffer.WriteString("GiraffeLovers,3823-5293-0215\n")
+  buffer.WriteString(default_header)
 
   // Connect to HBase
-  address := fmt.Sprintf("%s:9090", db_address)
-  hbclient, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
-  if err != nil {
-    fmt.Print("NewTcpClient error :: ")
-    fmt.Println(err)
-    return
-  }
-  if err = hbclient.Open(); err != nil {
-    fmt.Print("Open() error :: ")
-    fmt.Println(err)
-    return
+  if hbase_client == nil {
+    address := fmt.Sprintf("%s:9090", db_address)
+    hbase_client, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
+    if err != nil {
+      fmt.Print("NewTcpClient error :: ")
+      fmt.Println(err)
+      return
+    }
+    if err = hbase_client.Open(); err != nil {
+      fmt.Print("Open() error :: ")
+      fmt.Println(err)
+      return
+    }
   }
 
   // Prepare input
@@ -99,7 +109,7 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
   fmt.Println("Query ", row_key)
 
   // Query
-  if data, err := hbclient.Get(table, []byte(row_key), "tweet_id", nil); err != nil {
+  if data, err := hbase_client.Get(table, []byte(row_key), "tweet_id", nil); err != nil {
     fmt.Print("Error in query_hbase :: ")
     fmt.Println(err)
   } else {
@@ -112,7 +122,7 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
     }
   }
 
-  hbclient.Close()
+  hbase_client.Close()
   resp.Write([]byte(buffer.String()))
 }
 
@@ -126,20 +136,38 @@ func q1(resp http.ResponseWriter, req *http.Request) {
 }
 
 func q2(resp http.ResponseWriter, req *http.Request) {
-  // query_mysql(resp, req)
-  query_hbase(resp, req)
+  if db_type == "mysql" {
+    query_mysql(resp, req)
+  } else {
+    query_hbase(resp, req)
+  }
+}
+
+func connect_mysql() {
+  mysql_db, err = sql.Open("mysql", fmt.Sprintf("giraffe:giraffe@tcp(%s:3306)/cloud", db_address))
+  if err != nil {
+    panic("sql.Open :: "+err.Error())  // Just for example purpose. You should use proper error handling instead of panic
+  }
+  //defer mysql_db.Close()
+
+  statement, err = mysql_db.Prepare("SELECT tweet_id FROM plan1 WHERE user_id = ? and tweet_time = ?")
+  if err != nil {
+    panic("mysql_db.Prepare :: "+err.Error()) // proper error handling instead of panic in your app
+  }
+  //defer statement.Close()
 }
 
 func connect_hbase() {
   // Connect to HBase
   address := fmt.Sprintf("%s:9090", db_address)
 
-  hbclient, err := goh.NewTcpClient(address, goh.TBinaryProtocol, false)
+  var err error
+  hbase_client, err = goh.NewTcpClient(address, goh.TBinaryProtocol, false)
   if err != nil {
     fmt.Println(err)
     return
   }
-  if err = hbclient.Open(); err != nil {
+  if err = hbase_client.Open(); err != nil {
     fmt.Println(err)
     return
   }
@@ -156,26 +184,20 @@ func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 func main(){
  
-  if len(os.Args) < 2 {
-    fmt.Println("PROGRAM <db_address>")
+  if len(os.Args) < 3 && (os.Args[1] != "mysql" || os.Args[1] != "hbase") {
+    fmt.Println("PROGRAM <mysql or hbase> <database address>")
     return
   }
-  db_address = os.Args[1]
-  fmt.Printf("Database address: %s\n", db_address)
+  db_type = os.Args[1]
+  db_address = os.Args[2]
+  fmt.Printf("Connecting to %s database at %s...\n", db_type, db_address)
 
- /*
-  db, err = sql.Open("mysql", "root:tobymlab@tcp/cloud")
-  if err != nil {
-    panic(err.Error())  // Just for example purpose. You should use proper error handling instead of panic
+  if db_type == "mysql" {
+    connect_mysql()
+  } else {
+    connect_hbase()
   }
-  defer db.Close()
-
-  stmtOut, err = db.Prepare("SELECT tweet_id FROM plan1 WHERE user_id = ? and tweet_time = ?")
-  if err != nil {
-    panic(err.Error()) // proper error handling instead of panic in your app
-  }
-  defer stmtOut.Close()
-  */
+  fmt.Println("Database connected!")
 
   listener,err:= net.Listen("tcp","127.0.0.1:9001")
   if err != nil {
@@ -185,9 +207,6 @@ func main(){
   cache = make(map[string]string)
   max_cache_size = 10000
   srv := new(FastCGIServer)
-
-  //connect_hbase()
-  //defer hbclient.Close()
 
   fcgi.Serve(listener, srv)
 
