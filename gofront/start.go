@@ -97,14 +97,16 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
   query_count++
   //fmt.Printf("%d Query %s\n", query_count, row_key)
 
-  hbase_conn, _ := connect_hbase()
+  if hbase_conn, _ := connect_hbase(); hbase_conn == nil {
+    return
+  }
   defer hbase_conn.Close()
 
   // Query
   data, err := hbase_conn.Get(table, []byte(row_key), "tweet_id", nil)
   if err != nil {
     fmt.Printf("(%d) hbase_conn.Get :: %s\n", query_count, err.Error())
-    os.Exit(3)
+    return //os.Exit(3)
   }
   if data != nil && len(data) == 1 {
     buffer.WriteString(string(data[0].Value))
@@ -149,11 +151,11 @@ func connect_hbase() (conn *goh.HClient, err error) {
   address := fmt.Sprintf("%s:9090", db_address)
   if conn, err = goh.NewTcpClient(address, goh.TBinaryProtocol, false); err != nil {
     fmt.Println("NewTcpClient :: " + err.Error())
-    os.Exit(3)
+    return nil, err //os.Exit(3)
   }
   if err = conn.Open(); err != nil {
     fmt.Println("Open :: " + err.Error())
-    os.Exit(3)
+    return nil, err //os.Exit(3)
   }
   return conn, err
 }
