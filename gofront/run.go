@@ -59,9 +59,11 @@ func query_mysql(resp http.ResponseWriter, req *http.Request) {
     // Cache miss. Query result from the database
     cache_miss_count++
 
+    mutex.Lock()
     rows, err := statement.Query(user_id, tweet_time)
+    mutex.Unlock()
     if err != nil {
-      fmt.Println("Prepared statement error :: " + err.Error())
+      fmt.Println("statement.Query :: " + err.Error())
       return
     }
 
@@ -73,12 +75,14 @@ func query_mysql(resp http.ResponseWriter, req *http.Request) {
       buffer.WriteString(tweet_id + "\n")
     }
 
+    mutex.Lock()
     if(len(cache) >= max_cache_size){
       delete(cache, cache_keys[0])
       cache_keys = cache_keys[1:len(cache_keys)]
     }
     cache_keys = append(cache_keys, cache_key) 
     cache[cache_key] = buffer.String()
+    mutex.Unlock()
      //fmt.Print(cache_keys[0])
 
     fmt.Fprintf(resp, "%s", buffer.String())
