@@ -97,7 +97,8 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
   query_count++
   //fmt.Printf("%d Query %s\n", query_count, row_key)
 
-  if hbase_conn, _ := connect_hbase(); hbase_conn == nil {
+  hbase_conn, _ := connect_hbase()
+  if hbase_conn == nil {
     return
   }
   defer hbase_conn.Close()
@@ -170,7 +171,7 @@ func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main(){
-  if len(os.Args) < 3 && (os.Args[1] != "mysql" || os.Args[1] != "hbase") {
+  if len(os.Args) < 3 || os.Args[1] != "mysql" || os.Args[1] != "hbase" {
     fmt.Println("PROGRAM <mysql or hbase> <database address>")
     return
   }
