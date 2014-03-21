@@ -86,11 +86,11 @@ public class HBaseImport {
 			if (!r.isEmpty()) {
 				String current = new String(r.getValue(
 						Constants.FAMILY_TWEET_ID, null));
-				String[] tokens = current.split(";");
+				String[] tokens = current.split("\n");
 				TreeSet<String> sorted = new TreeSet<String>();
-				sorted.add(tweetId + ";");
+				sorted.add(tweetId + "\n");
 				for (String t : tokens) {
-					sorted.add(t + ";");
+					sorted.add(t + "\n");
 				}
 				for (String s : sorted) {
 					outputTweetId += s;
@@ -98,7 +98,7 @@ public class HBaseImport {
 				System.out.println("Special: " + rowKey + " => "
 						+ outputTweetId);
 			} else {
-				outputTweetId = tweetId + ";";
+				outputTweetId = tweetId + "\n";
 			}
 
 			// Store tweet id(s)

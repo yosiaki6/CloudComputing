@@ -117,7 +117,7 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
 func q1(resp http.ResponseWriter, req *http.Request) {
   var buffer bytes.Buffer
   var t = time.Now()
-  buffer.WriteString("GiraffeLovers,3823-5293-0215\n")
+  buffer.WriteString(default_header)
   buffer.WriteString(fmt.Sprintf("%04d-%02d-%02d+%02d:%02d:%02d\n",t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second()))
   resp.Write([]byte(buffer.String()))
 }
