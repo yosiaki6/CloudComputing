@@ -195,7 +195,11 @@ func main(){
     fmt.Println("MySQL server connected!")
   } else {
     hbase_conn, _ = connect_hbase()
-    fmt.Println("HBase server connected!")
+    if hbase_conn != nil {
+      fmt.Println("HBase server connected!")
+    } else {
+      fmt.Println("Could not connect to HBase server. But I'm gonna run anyway.")
+    }
   }
   listener, err := net.Listen("tcp",":9001")
   if err != nil {
