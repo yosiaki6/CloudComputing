@@ -171,7 +171,7 @@ func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main(){
-  if len(os.Args) < 3 || os.Args[1] != "mysql" || os.Args[1] != "hbase" {
+  if len(os.Args) < 3 || (os.Args[1] != "mysql" && os.Args[1] != "hbase") {
     fmt.Println("PROGRAM <mysql or hbase> <database address>")
     return
   }
