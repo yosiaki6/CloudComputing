@@ -1,2 +1,2 @@
-#!/usr/bin/env bash
+#!/bin/bash
 ~/bin/hbase-daemon.sh start thrift
