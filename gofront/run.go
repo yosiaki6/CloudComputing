@@ -110,7 +110,6 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
   var result = false
   for conn_index, result = range is_conn_avail {
     if result == true {
-      fmt.Println("avail!",conn_index)
       break
     }
   }
