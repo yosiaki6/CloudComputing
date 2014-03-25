@@ -30,7 +30,9 @@ var cache_hit_count = 0
 var cache_miss_count = 0
 
 // HBase
-var hbase_conn *goh.HClient
+const POOL_SIZE = 10
+var hbase_conn_pool [POOL_SIZE]*goh.HClient
+var is_conn_avail [POOL_SIZE]bool
 
 var db_type string
 var db_address string
@@ -103,18 +105,23 @@ func query_hbase(resp http.ResponseWriter, req *http.Request) {
   query_count++
   //fmt.Printf("%d Query %s\n", query_count, row_key)
 
-  /*
-  hbase_conn, _ := connect_hbase()
-  if hbase_conn == nil {
-    return
+  // Find available connection
+  var conn_index = 0
+  var result = false
+  for conn_index, result = range is_conn_avail {
+    if result == true {
+      fmt.Println("avail!",conn_index)
+      break
+    }
   }
-  defer hbase_conn.Close()
-  */
 
   // Query
   mutex.Lock()
-  data, err := hbase_conn.Get(table, []byte(row_key), "tweet_id", nil)
+  is_conn_avail[conn_index] = false
+  data, err := hbase_conn_pool[conn_index].Get(table, []byte(row_key), "tweet_id", nil)
+  is_conn_avail[conn_index] = true
   mutex.Unlock()
+
   if err != nil {
     fmt.Printf("(%d) hbase_conn.Get :: %s\n", query_count, err.Error())
     return //os.Exit(3)
@@ -194,11 +201,14 @@ func main(){
     defer mysql_conn.Close()
     fmt.Println("MySQL server connected!")
   } else {
-    hbase_conn, _ = connect_hbase()
-    if hbase_conn != nil {
-      fmt.Println("HBase server connected!")
-    } else {
-      fmt.Println("Could not connect to HBase server. But I'm gonna run anyway.")
+    for i := 0; i < POOL_SIZE; i++ {
+      hbase_conn_pool[i], _ = connect_hbase()
+      if hbase_conn_pool[i] != nil {
+        is_conn_avail[i] = true
+        fmt.Println("HBase server connected! (", i, ")")
+      } else {
+        fmt.Println("Could not connect to HBase server. (", i, ")")
+      }
     }
   }
   listener, err := net.Listen("tcp",":9001")
