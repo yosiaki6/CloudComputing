@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Class-Path: lib/commons-configuration-1.6.jar lib/hbase-0.94.17.jar   
+ lib/slf4j-log4j12-1.4.3.jar lib/commons-lang-2.5.jar    lib/log4j-1.2
+ .16.jar    lib/zookeeper-3.4.5.jar lib/commons-logging-1.1.1.jar lib/
+ protobuf-java-2.4.0a.jar  lib/hadoop-core-1.0.4.jar   lib/slf4j-api-1
+ .4.3.jar
+Created-By: 1.7.0_51 (Oracle Corporation)
+Main-Class: edu.cmu.cloud.phase2.hbase.WordCount
+
