@@ -11,5 +11,5 @@ tmp/
 local.properties
 .settings/
 .loadpath
-HBaseBackend/lib/
 HBaseBackend/bin/
+HBaseBackend/lib/
