@@ -1,1 +1,2 @@
-Main-Class: CSV2HBase
+Class-Path: lib/jackson-core-asl-1.8.8.jar lib/jackson-mapper-asl-1.8.8.jar
+Main-Class: KazuyaMR

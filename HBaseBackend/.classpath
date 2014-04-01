@@ -14,5 +14,7 @@
 	<classpathentry kind="lib" path="lib/slf4j-log4j12-1.4.3.jar"/>
 	<classpathentry kind="lib" path="lib/zookeeper-3.4.5.jar"/>
 	<classpathentry kind="lib" path="lib/protobuf-java-2.4.0a.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-mapper-asl-1.8.8.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-core-asl-1.8.8.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

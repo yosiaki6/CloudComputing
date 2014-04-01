@@ -19,6 +19,7 @@ public class Constants {
 			"yyyy-MM-dd+HH:mm:ss");
 	static final TimeZone TIMEZONE_UTC = TimeZone.getTimeZone("UTC");
 	static final byte[] FAMILY_TWEET_ID = Bytes.toBytes("tweet_id");
+	static final byte[] FAMILY_RETWEETER_ID = Bytes.toBytes("retweeter_id");
 	static {
 		DATE_OUTPUT_FORMAT.setTimeZone(TIMEZONE_UTC);
 	}
