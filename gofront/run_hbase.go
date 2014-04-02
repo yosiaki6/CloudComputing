@@ -108,9 +108,11 @@ func connect_hbase() (conn *goh.HClient, err error) {
 
 func get_connection() *goh.HClient {
   mutex.Lock()
-  for len(avail_conn_queue) == 0 {
+  if len(avail_conn_queue) == 0 {
     // Wait until there's an available connection
     fmt.Println("Connection full. Wait..")
+    for len(avail_conn_queue) == 0 {
+    }
   }
   // Dequeue
   conn := avail_conn_queue[0]
