@@ -18,7 +18,7 @@ type FastCGIServer struct{}
 type ApiHandler struct{}
 
 // HBase
-const POOL_SIZE = 10
+const POOL_SIZE = 112
 var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
 
@@ -110,23 +110,21 @@ func get_connection() *goh.HClient {
   mutex.Lock()
   for len(avail_conn_queue) == 0 {
     // Wait until there's an available connection
-    fmt.Println("Connection full. Wait..")
-    time.Sleep(1000 * time.Millisecond)
+    //fmt.Println("Connection full. Wait..")
+    time.Sleep(1)
   }
   // Dequeue
   conn := avail_conn_queue[0]
   avail_conn_queue = avail_conn_queue[1:]
-  fmt.Println("Got. ", len(avail_conn_queue), " conns left")
+  //fmt.Println("Got. ", len(avail_conn_queue), " conns left")
   mutex.Unlock()
   return conn
 }
 
 func return_connection(conn *goh.HClient) {
-  mutex.Lock()
   // Enqueue
   avail_conn_queue = append(avail_conn_queue, conn)
-  fmt.Println("Returned. ", len(avail_conn_queue), " conns available")
-  mutex.Unlock()
+  //fmt.Println("Returned. ", len(avail_conn_queue), " conns available")
 }
 
 func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
