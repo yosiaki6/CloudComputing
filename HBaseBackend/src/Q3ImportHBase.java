@@ -29,23 +29,37 @@ import org.apache.hadoop.util.ToolRunner;
 
 public class Q3ImportHBase extends Configured implements Tool {
 
-	public static class Map extends MapReduceBase implements Mapper<Text, Text, Text, Text> {
+	public static class Map extends MapReduceBase implements
+			Mapper<Text, Text, Text, Text> {
+
+		public void map(Text key, Text value,
+				OutputCollector<Text, Text> output, Reporter reporter)
+				throws IOException {
+			output.collect(key, value);
+		}
+
+	}
+
+	public static class Reduce extends MapReduceBase implements
+			Reducer<Text, Text, Text, Text> {
 		private HTable table;
-		private String hbaseAddress,tableName;
-		
+		private String hbaseAddress, tableName;
+
 		@Override
 		public void configure(JobConf job) {
 			hbaseAddress = job.get("hbaseAddress");
 			tableName = job.get("tableName");
-			
+
 			Configuration hbaseConf = HBaseConfiguration.create();
 			hbaseConf.set("hbase.zookeeper.quorum", hbaseAddress);
 			HBaseAdmin admin;
 			try {
 				admin = new HBaseAdmin(hbaseConf);
 				if (!admin.tableExists(tableName)) {
-					HColumnDescriptor hColDesc = new HColumnDescriptor(Constants.FAMILY_RETWEETER_ID);
-					HTableDescriptor hTableDesc = new HTableDescriptor(tableName);
+					HColumnDescriptor hColDesc = new HColumnDescriptor(
+							Constants.FAMILY_RETWEETER_ID);
+					HTableDescriptor hTableDesc = new HTableDescriptor(
+							tableName);
 					hTableDesc.addFamily(hColDesc);
 					admin.createTable(hTableDesc);
 					admin.close();
@@ -55,26 +69,25 @@ public class Q3ImportHBase extends Configured implements Tool {
 				e.printStackTrace();
 			}
 		}
-		
-		public void map(Text key, Text value, OutputCollector<Text, Text> output, Reporter reporter) throws IOException {
-			String converted = value.toString().replace(';', '\n');
-			Put put = new Put(Bytes.toBytes(key.toString()));
-			put.add(Constants.FAMILY_RETWEETER_ID, null, Bytes.toBytes(converted));
-			table.put(put);
-//			output.collect(key, new Text(original));
+
+		public void reduce(Text key, Iterator<Text> values,
+				OutputCollector<Text, Text> output, Reporter reporter)
+				throws IOException {
+			while (values.hasNext()) {
+				Text value = values.next();
+				String converted = value.toString().replace(';', '\n');
+				Put put = new Put(Bytes.toBytes(key.toString()));
+				put.add(Constants.FAMILY_RETWEETER_ID, null,
+						Bytes.toBytes(converted));
+				table.put(put);
+				output.collect(key, value);
+			}
 		}
-		
+
 		@Override
 		public void close() throws IOException {
 			table.close();
 		}
-	}
-
-	public static class Reduce extends MapReduceBase implements Reducer<Text, Text, Text, Text> {
-		
-		public void reduce(Text key, Iterator<Text> values, OutputCollector<Text, Text> output, Reporter reporter) throws IOException {
-		}
-		
 	}
 
 	@Override
@@ -87,7 +100,7 @@ public class Q3ImportHBase extends Configured implements Tool {
 
 		conf.setMapperClass(Map.class);
 		conf.setReducerClass(Reduce.class);
-		
+
 		conf.set("hbaseAddress", args[1]);
 		conf.set("tableName", args[2]);
 
@@ -95,15 +108,17 @@ public class Q3ImportHBase extends Configured implements Tool {
 		conf.setOutputFormat(TextOutputFormat.class);
 
 		FileInputFormat.setInputPaths(conf, new Path(args[0]));
-		FileOutputFormat.setOutputPath(conf, new Path("s3://wkanchan-bucket/phase2/output/"+
-				Constants.DATE_OUTPUT_FORMAT.format(new Date())));
+		FileOutputFormat.setOutputPath(conf, new Path(
+				"s3://wkanchan-bucket/phase2/output/"
+						+ Constants.DATE_OUTPUT_FORMAT.format(new Date())));
 
 		JobClient.runJob(conf);
 		return 0;
 	}
 
-	public static void main(String[] args) throws Exception {	
-		int res = ToolRunner.run(new Configuration(), new Q3ImportHBase(), args);
+	public static void main(String[] args) throws Exception {
+		int res = ToolRunner
+				.run(new Configuration(), new Q3ImportHBase(), args);
 		System.exit(res);
 	}
 
