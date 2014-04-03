@@ -147,16 +147,17 @@ func main() {
   // db_address = os.Args[1]
   if (db_address == "") {
     fmt.Println("WARNING: No database address specified.")
-  }
-  fmt.Println("Database address:", db_address)
+  } else {
+    fmt.Println("Database address:", db_address)
 
-  for i := 0; i < POOL_SIZE; i++ {
-    hbase_conn_pool[i], _ = connect_hbase()
-    if hbase_conn_pool[i] != nil {
-      avail_conn_queue = append(avail_conn_queue, hbase_conn_pool[i])
-      fmt.Println("Database connected! (", i, ")")
-    } else {
-      fmt.Println("Could not connect to database. (", i, ")")
+    for i := 0; i < POOL_SIZE; i++ {
+      hbase_conn_pool[i], _ = connect_hbase()
+      if hbase_conn_pool[i] != nil {
+        avail_conn_queue = append(avail_conn_queue, hbase_conn_pool[i])
+        fmt.Println("Database connected! (", i, ")")
+      } else {
+        fmt.Println("Could not connect to database. (", i, ")")
+      }
     }
   }
 
