@@ -146,8 +146,7 @@ func main() {
   // }
   // db_address = os.Args[1]
   if (db_address == "") {
-    fmt.Println("No database address specified.")
-    os.Exit(1)
+    fmt.Println("WARNING: No database address specified.")
   }
   fmt.Println("Database address:", db_address)
 
