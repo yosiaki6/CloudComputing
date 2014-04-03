@@ -12,17 +12,16 @@ import (
   "os"
   "sync"
 )
-var mutex = &sync.Mutex{}
+var get_conn_mutex = &sync.Mutex{}
+var return_conn_mutex = &sync.Mutex{}
 
 type FastCGIServer struct{}
 type ApiHandler struct{}
 
-// HBase
 const POOL_SIZE = 112
 var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
-
-var db_address string
+var db_address = "" // *** Put HBase address here! ***
 var default_header = "GiraffeLovers,5148-7320-2582\n"
 var query_count = 0
 
@@ -107,7 +106,7 @@ func connect_hbase() (conn *goh.HClient, err error) {
 }
 
 func get_connection() *goh.HClient {
-  mutex.Lock()
+  get_conn_mutex.Lock()
   for len(avail_conn_queue) == 0 {
     // Wait until there's an available connection
     //fmt.Println("Connection full. Wait..")
@@ -117,14 +116,16 @@ func get_connection() *goh.HClient {
   conn := avail_conn_queue[0]
   avail_conn_queue = avail_conn_queue[1:]
   //fmt.Println("Got. ", len(avail_conn_queue), " conns left")
-  mutex.Unlock()
+  get_conn_mutex.Unlock()
   return conn
 }
 
 func return_connection(conn *goh.HClient) {
+  return_conn_mutex.Lock()
   // Enqueue
   avail_conn_queue = append(avail_conn_queue, conn)
   //fmt.Println("Returned. ", len(avail_conn_queue), " conns available")
+  return_conn_mutex.Unlock()
 }
 
 func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -139,20 +140,24 @@ func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-  if len(os.Args) < 2 {
-    fmt.Println("PROGRAM <hbase-address>")
-    return
+  // if len(os.Args) < 2 {
+  //   fmt.Println("PROGRAM <hbase-address>")
+  //   os.Exit(1)
+  // }
+  // db_address = os.Args[1]
+  if (db_address == "") {
+    fmt.Println("No database address specified.")
+    os.Exit(1)
   }
-  db_address = os.Args[1]
-  fmt.Printf("HBase address: %s\n", db_address)
+  fmt.Println("Database address:", db_address)
 
   for i := 0; i < POOL_SIZE; i++ {
     hbase_conn_pool[i], _ = connect_hbase()
     if hbase_conn_pool[i] != nil {
       avail_conn_queue = append(avail_conn_queue, hbase_conn_pool[i])
-      fmt.Println("HBase server connected! (", i, ")")
+      fmt.Println("Database connected! (", i, ")")
     } else {
-      fmt.Println("Could not connect to HBase server. (", i, ")")
+      fmt.Println("Could not connect to database. (", i, ")")
     }
   }
 
