@@ -36,7 +36,7 @@ public class Q2ImportHBase extends Configured implements Tool {
 		
 		public void map(LongWritable key, Text value, OutputCollector<Text, Text> output, Reporter reporter) throws IOException {
 			String[] token = value.toString().split("\t");
-			rowKey.set(token[0]+","+token[1]);
+			rowKey.set(token[0]+"|"+token[1]);
 			tweetIDs.set(token[2]);
 			output.collect(rowKey, tweetIDs);
 		}
@@ -104,7 +104,8 @@ public class Q2ImportHBase extends Configured implements Tool {
 		conf.setOutputFormat(TextOutputFormat.class);
 
 		FileInputFormat.setInputPaths(conf, new Path(args[0]));
-		FileOutputFormat.setOutputPath(conf, new Path("s3://wkanchan-bucket/phase2/output/"+
+		FileOutputFormat.setOutputPath(conf, new Path(
+				"s3://wkanchan-bucket/phase2/output/"+
 				Constants.DATE_OUTPUT_FORMAT.format(new Date())));
 
 		JobClient.runJob(conf);

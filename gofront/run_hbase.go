@@ -1,45 +1,53 @@
 package main
 
 import (
-  "net"
   "net/http"
-  "net/http/fcgi"
   "bytes"
   "fmt"
   "strings"
   "time"
   "github.com/sdming/goh"
   "os"
+  "os/signal"
   "sync"
+  "syscall"
+  "log"
+  "errors"
 )
 var get_conn_mutex = &sync.Mutex{}
 var return_conn_mutex = &sync.Mutex{}
 
-type FastCGIServer struct{}
-type ApiHandler struct{}
+type Server struct {}
 
-const POOL_SIZE = 112
-var hbase_conn_pool [POOL_SIZE]*goh.HClient
+const LISTEN_PORT = "8080"
+const POOL_SIZE = 100
+// var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
-var db_address = "" // *** Put HBase address here! ***
+var db_address = "ec2-54-208-229-92.compute-1.amazonaws.com" // *** Put HBase address here! ***
 var default_header = "GiraffeLovers,5148-7320-2582\n"
 var query_count = 0
+var active_conn_count = 0
 
-func q1(resp http.ResponseWriter, req *http.Request) {
+func q1(req *http.Request) (string, error) {
   var buffer bytes.Buffer
-  var t = time.Now()
   buffer.WriteString(default_header)
+  t := time.Now()
   buffer.WriteString(fmt.Sprintf("%04d-%02d-%02d+%02d:%02d:%02d\n",t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second()))
-  resp.Write([]byte(buffer.String()))
+
+  return buffer.String(), nil
 }
 
-func q2(resp http.ResponseWriter, req *http.Request) {
+func q2(req *http.Request) (string, error) {
+  if (active_conn_count == 0) {
+    return "", errors.New("No connection to database.")
+  }
+
   var buffer bytes.Buffer
   buffer.WriteString(default_header)
   //fmt.Printf("%d Query %s\n", query_count, row_key)
 
   // Prepare
-  table := "tweets"
+  table := "q2phase2"
   user_id := req.FormValue("userid")
   tweet_time := req.FormValue("tweet_time")
   tweet_time = strings.Replace(tweet_time, " ", "+", 1)
@@ -54,17 +62,22 @@ func q2(resp http.ResponseWriter, req *http.Request) {
   // Handle error
   if err != nil {
     fmt.Printf("(%d) hbase_conn.Get :: %s\n", query_count, err.Error())
-    return
+    return "", err
   }
 
   // Print the result
   if data != nil && len(data) == 1 {
     buffer.WriteString(string(data[0].Value))
   }
-  fmt.Fprintf(resp, "%s", buffer.String())
+
+  return buffer.String(), nil
 }
 
-func q3(resp http.ResponseWriter, req *http.Request) {
+func q3(req *http.Request) (string, error) {
+  if (active_conn_count == 0) {
+    return "", errors.New("No connection to database.")
+  }
+
   var buffer bytes.Buffer
   buffer.WriteString(default_header)
   //fmt.Printf("%d Query %s\n", query_count, row_key)
@@ -82,14 +95,15 @@ func q3(resp http.ResponseWriter, req *http.Request) {
   // Handle error
   if err != nil {
     fmt.Printf("(%d) hbase_conn.Get :: %s\n", query_count, err.Error())
-    return
+    return "", err
   }
 
   // Print the result
   if data != nil && len(data) == 1 {
     buffer.WriteString(string(data[0].Value))
   }
-  fmt.Fprintf(resp, "%s", buffer.String())
+
+  return buffer.String(), nil
 }
 
 func connect_hbase() (conn *goh.HClient, err error) {
@@ -128,15 +142,25 @@ func return_connection(conn *goh.HClient) {
   return_conn_mutex.Unlock()
 }
 
-func (s FastCGIServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (s Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+  var body string
+  var err error
   switch (req.URL.Path) {
   case "/q1":
-    q1(resp, req)
+    body, err = q1(req)
   case "/q2":
-    q2(resp, req)
+    body, err = q2(req)
   case "/q3":
-    q3(resp, req)
+    body, err = q3(req)
   }
+  if err != nil {
+    http.Error(resp, err.Error(), 500)
+    return
+  }
+  // Try to keep the same amount of headers
+  resp.Header().Set("Server", "gophr")
+  resp.Header().Set("Content-Length", fmt.Sprint(len(body)))
+  fmt.Fprint(resp, body)
 }
 
 func main() {
@@ -151,9 +175,11 @@ func main() {
     fmt.Println("Database address:", db_address)
 
     for i := 0; i < POOL_SIZE; i++ {
-      hbase_conn_pool[i], _ = connect_hbase()
-      if hbase_conn_pool[i] != nil {
-        avail_conn_queue = append(avail_conn_queue, hbase_conn_pool[i])
+      conn, _ := connect_hbase()
+      if conn != nil {
+        active_conn_count += 1
+        // hbase_conn_pool = append(hbase_conn_pool, conn)
+        avail_conn_queue = append(avail_conn_queue, conn)
         fmt.Println("Database connected! (", i, ")")
       } else {
         fmt.Println("Could not connect to database. (", i, ")")
@@ -161,12 +187,23 @@ func main() {
     }
   }
 
-  listener, err := net.Listen("tcp",":9001")
-  if err != nil {
-    fmt.Println("Listen 127.0.0.1:9001 :: " + err.Error())
-    os.Exit(3)
-  }
-  srv := new(FastCGIServer)
-  fcgi.Serve(listener, srv)
+  // Start server
+  sigchan := make(chan os.Signal, 1)
+  signal.Notify(sigchan, os.Interrupt)
+  signal.Notify(sigchan, syscall.SIGTERM)
+
+  server := Server{}
+
+  go func() {
+    http.Handle("/q1", server)
+    http.Handle("/q2", server)
+    http.Handle("/q3", server)
+    fmt.Println("Server started at port "+LISTEN_PORT)
+    if err := http.ListenAndServe(":" + LISTEN_PORT, nil); err != nil {
+        log.Fatal(err)
+    }
+  }()
+
+  <-sigchan
 
 }
