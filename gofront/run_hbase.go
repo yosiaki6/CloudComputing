@@ -19,7 +19,7 @@ var return_conn_mutex = &sync.Mutex{}
 
 type Server struct {}
 
-const LISTEN_PORT = "8080"
+const LISTEN_PORT = "80"
 const POOL_SIZE = 100
 // var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
