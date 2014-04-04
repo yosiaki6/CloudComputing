@@ -20,7 +20,7 @@ var return_conn_mutex = &sync.Mutex{}
 type Server struct {}
 
 const LISTEN_PORT = "80"
-const POOL_SIZE = 100
+const POOL_SIZE = 50
 // var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
 var db_address = "ec2-54-208-229-92.compute-1.amazonaws.com" // *** Put HBase address here! ***
