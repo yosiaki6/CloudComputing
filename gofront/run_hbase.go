@@ -21,7 +21,7 @@ var mutex = &sync.Mutex{}
 type Server struct {}
 
 const LISTEN_PORT = "80"
-const POOL_SIZE = 50
+const POOL_SIZE = 100
 var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
 var is_avail [POOL_SIZE]bool
