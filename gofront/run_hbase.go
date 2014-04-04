@@ -12,17 +12,19 @@ import (
   "sync"
   "syscall"
   "log"
-  "errors"
+  //"errors"
 )
 var get_conn_mutex = &sync.Mutex{}
 var return_conn_mutex = &sync.Mutex{}
+var mutex = &sync.Mutex{}
 
 type Server struct {}
 
 const LISTEN_PORT = "80"
 const POOL_SIZE = 50
-// var hbase_conn_pool [POOL_SIZE]*goh.HClient
+var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
+var is_avail [POOL_SIZE]bool
 var db_address = "ec2-54-208-229-92.compute-1.amazonaws.com" // *** Put HBase address here! ***
 var default_header = "GiraffeLovers,5148-7320-2582\n"
 var query_count = 0
@@ -38,9 +40,9 @@ func q1(req *http.Request) (string, error) {
 }
 
 func q2(req *http.Request) (string, error) {
-  if (active_conn_count == 0) {
-    return "", errors.New("No connection to database.")
-  }
+  //if (active_conn_count == 0) {
+    //return "", errors.New("No connection to database.")
+  //}
 
   var buffer bytes.Buffer
   buffer.WriteString(default_header)
@@ -73,24 +75,39 @@ func q2(req *http.Request) (string, error) {
   return buffer.String(), nil
 }
 
+const q3table = "q3phase2"
+
 func q3(req *http.Request) (string, error) {
-  if (active_conn_count == 0) {
-    return "", errors.New("No connection to database.")
-  }
+  //if (active_conn_count == 0) {
+    //return "", errors.New("No connection to database.")
+  //}
 
   var buffer bytes.Buffer
   buffer.WriteString(default_header)
   //fmt.Printf("%d Query %s\n", query_count, row_key)
 
   // Prepare
-  table := "q3phase2"
   user_id := req.FormValue("userid")
   query_count++
 
   // Query
-  conn := get_connection()
-  data, err := conn.Get(table, []byte(user_id), "retweeter_id", nil)
-  return_connection(conn)
+  //conn := get_connection()
+  var conn *goh.HClient
+  var conn_index int
+  for conn == nil {
+    for i, value := range is_avail {
+      if value == true {
+        conn = hbase_conn_pool[i]
+        conn_index = i
+        is_avail[i] = false
+        break
+      }
+    }
+    time.Sleep(1)
+  }
+  data, err := conn.Get(q3table, []byte(user_id), "retweeter_id", nil)
+  is_avail[conn_index] = true
+  //return_connection(conn)
 
   // Handle error
   if err != nil {
@@ -177,9 +194,11 @@ func main() {
     for i := 0; i < POOL_SIZE; i++ {
       conn, _ := connect_hbase()
       if conn != nil {
-        active_conn_count += 1
+        hbase_conn_pool[i] = conn
+        is_avail[i] = true
+        //active_conn_count += 1
         // hbase_conn_pool = append(hbase_conn_pool, conn)
-        avail_conn_queue = append(avail_conn_queue, conn)
+        //avail_conn_queue = append(avail_conn_queue, conn)
         fmt.Println("Database connected! (", i, ")")
       } else {
         fmt.Println("Could not connect to database. (", i, ")")
