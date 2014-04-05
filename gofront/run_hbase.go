@@ -22,11 +22,14 @@ type Server struct {}
 
 const LISTEN_PORT = "80"
 const POOL_SIZE = 100
+const q2table = "q2phase2"
+const q3table = "q3phase2"
+const db_address = "ec2-54-85-80-199.compute-1.amazonaws.com" // *** Put HBase address here! ***
+const default_header = "GiraffeLovers,5148-7320-2582\n"
+
 var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
 var is_avail [POOL_SIZE]bool
-var db_address = "ec2-54-85-80-199.compute-1.amazonaws.com" // *** Put HBase address here! ***
-var default_header = "GiraffeLovers,5148-7320-2582\n"
 var query_count = 0
 var active_conn_count = 0
 
@@ -57,9 +60,21 @@ func q2(req *http.Request) (string, error) {
   query_count++
 
   // Query
-  conn := get_connection()
+  var conn *goh.HClient
+  var conn_index int
+  for conn == nil {
+    for i, value := range is_avail {
+      if value == true {
+        conn = hbase_conn_pool[i]
+        conn_index = i
+        is_avail[i] = false
+        break
+      }
+    }
+    time.Sleep(1)
+  }
   data, err := conn.Get(table, []byte(row_key), "tweet_id", nil)
-  return_connection(conn)
+  is_avail[conn_index] = true
 
   // Handle error
   if err != nil {
@@ -75,8 +90,6 @@ func q2(req *http.Request) (string, error) {
   return buffer.String(), nil
 }
 
-const q3table = "q3phase2"
-
 func q3(req *http.Request) (string, error) {
   //if (active_conn_count == 0) {
     //return "", errors.New("No connection to database.")
@@ -91,7 +104,6 @@ func q3(req *http.Request) (string, error) {
   query_count++
 
   // Query
-  //conn := get_connection()
   var conn *goh.HClient
   var conn_index int
   for conn == nil {
@@ -107,7 +119,6 @@ func q3(req *http.Request) (string, error) {
   }
   data, err := conn.Get(q3table, []byte(user_id), "retweeter_id", nil)
   is_avail[conn_index] = true
-  //return_connection(conn)
 
   // Handle error
   if err != nil {
