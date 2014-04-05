@@ -25,7 +25,7 @@ const POOL_SIZE = 100
 var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
 var is_avail [POOL_SIZE]bool
-var db_address = "ec2-54-208-229-92.compute-1.amazonaws.com" // *** Put HBase address here! ***
+var db_address = "ec2-54-85-80-199.compute-1.amazonaws.com" // *** Put HBase address here! ***
 var default_header = "GiraffeLovers,5148-7320-2582\n"
 var query_count = 0
 var active_conn_count = 0
