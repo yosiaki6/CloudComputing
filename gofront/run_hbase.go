@@ -21,7 +21,7 @@ var mutex = &sync.Mutex{}
 type Server struct {}
 
 const LISTEN_PORT = "80"
-const POOL_SIZE =5000
+const POOL_SIZE =1000
 const QUEUE_WAIT_TIME=500
 const Q2_TABLE = "q2phase2"
 const Q3_TABLE = "q3phase2"
@@ -175,6 +175,13 @@ func (s Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+  var custom_port = "80"
+  if len(os.Args) == 2 {
+    custom_port = os.Args[1]
+  } else {
+    custom_port = LISTEN_PORT
+  }
+
   if (DB_ADDRESS == "") {
     fmt.Println("WARNING: No database address specified.")
   } else {
@@ -207,8 +214,8 @@ func main() {
     http.Handle("/q1", server)
     http.Handle("/q2", server)
     http.Handle("/q3", server)
-    fmt.Println("Server started at port "+LISTEN_PORT)
-    if err := http.ListenAndServe(":" + LISTEN_PORT, nil); err != nil {
+    fmt.Println("Server started at port "+custom_port)
+    if err := http.ListenAndServe(":" + custom_port, nil); err != nil {
         log.Fatal(err)
     }
   }()

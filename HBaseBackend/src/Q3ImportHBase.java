@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -42,8 +44,9 @@ public class Q3ImportHBase extends Configured implements Tool {
 
 	public static class Reduce extends MapReduceBase implements
 			Reducer<Text, Text, Text, Text> {
-		private HTable table;
-		private String hbaseAddress, tableName;
+		HTable table;
+		String hbaseAddress, tableName;
+		List<Put> batch = new LinkedList<Put>();
 
 		@Override
 		public void configure(JobConf job) {
@@ -79,13 +82,18 @@ public class Q3ImportHBase extends Configured implements Tool {
 				Put put = new Put(Bytes.toBytes(key.toString()));
 				put.add(Constants.FAMILY_RETWEETER_ID, null,
 						Bytes.toBytes(converted));
-				table.put(put);
+				batch.add(put);
+				if (batch.size() == 100000) {
+					table.put(batch);
+					batch.clear();
+				}
 				output.collect(key, value);
 			}
 		}
 
 		@Override
 		public void close() throws IOException {
+			table.put(batch);
 			table.close();
 		}
 	}
@@ -109,7 +117,7 @@ public class Q3ImportHBase extends Configured implements Tool {
 
 		FileInputFormat.setInputPaths(conf, new Path(args[0]));
 		FileOutputFormat.setOutputPath(conf, new Path(
-				"s3://wkanchan-bucket/phase2/output/"
+				"s3://wkanchan-bucket/phase2/output/q3import/"
 						+ Constants.DATE_OUTPUT_FORMAT.format(new Date())));
 
 		JobClient.runJob(conf);
