@@ -21,22 +21,21 @@ var mutex = &sync.Mutex{}
 type Server struct {}
 
 const LISTEN_PORT = "80"
-const POOL_SIZE =5000
-const QUEUE_WAIT_TIME=1000
-const Q2_TABLE = "q2phase2"
-const Q3_TABLE = "q3phase2"
-const DB_ADDRESS = "ec2-54-85-58-122.compute-1.amazonaws.com" /*** Put HBase address here! ***/
-const RESP_FIRST_LINE = "GiraffeLovers,5148-7320-2582\n"
+const POOL_SIZE =10
+const q2table = "q2phase2"
+const q3table = "q3phase2"
+const db_address = "ec2-54-85-58-122.compute-1.amazonaws.com" /*** Put HBase address here! ***/
+const default_header = "GiraffeLovers,5148-7320-2582\n"
 
 var hbase_conn_pool [POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
 var is_avail [POOL_SIZE]bool
 var query_count = 0
-var next_queue = 0
+var queue_index = 0
 
 func q1(req *http.Request) (string, error) {
   var buffer bytes.Buffer
-  buffer.WriteString(RESP_FIRST_LINE)
+  buffer.WriteString(default_header)
   t := time.Now()
   buffer.WriteString(fmt.Sprintf("%04d-%02d-%02d+%02d:%02d:%02d\n",t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second()))
 
@@ -45,7 +44,7 @@ func q1(req *http.Request) (string, error) {
 
 func q2(req *http.Request) (string, error) {
   var buffer bytes.Buffer
-  buffer.WriteString(RESP_FIRST_LINE)
+  buffer.WriteString(default_header)
   //fmt.Printf("%d Query %s\n", query_count, row_key)
 
   // Prepare
@@ -60,21 +59,25 @@ func q2(req *http.Request) (string, error) {
   var conn *goh.HClient
   var conn_index int
   for conn == nil {
-    x := next_queue
-    for i := 0; i < POOL_SIZE; i++ {
-      x = (next_queue + i) % POOL_SIZE
-      if is_avail[x] == true {
-        conn = hbase_conn_pool[x]
-        conn_index = x
-        is_avail[x] = false
-        next_queue = (next_queue + 1) % POOL_SIZE
+    retry_count := 0
+    for retry_count < POOL_SIZE {
+      if is_avail[queue_index] == false {
+        retry_count += 1
+        queue_index = (queue_index + 1) % POOL_SIZE
+      } else {
+        conn = hbase_conn_pool[queue_index]
+        fmt.Println("Conn",queue_index)
+        conn_index = queue_index
+        is_avail[queue_index] = false
+        queue_index = (queue_index + 1) % POOL_SIZE
         break
       }
     }
     if conn != nil {
       break
     }
-    time.Sleep(QUEUE_WAIT_TIME)
+    fmt.Println("Queue is full. Wait..")
+    time.Sleep(1)
   }
   data, err := conn.Get(table, []byte(row_key), "tweet_id", nil)
   is_avail[conn_index] = true
@@ -95,7 +98,7 @@ func q2(req *http.Request) (string, error) {
 
 func q3(req *http.Request) (string, error) {
   var buffer bytes.Buffer
-  buffer.WriteString(RESP_FIRST_LINE)
+  buffer.WriteString(default_header)
   //fmt.Printf("%d Query %s\n", query_count, row_key)
 
   // Prepare
@@ -106,23 +109,17 @@ func q3(req *http.Request) (string, error) {
   var conn *goh.HClient
   var conn_index int
   for conn == nil {
-    x := next_queue
-    for i := 0; i < POOL_SIZE; i++ {
-      x = (next_queue + i) % POOL_SIZE
-      if is_avail[x] == true {
-        conn = hbase_conn_pool[x]
-        conn_index = x
-        is_avail[x] = false
-        next_queue = (next_queue + 1) % POOL_SIZE
+    for i, value := range is_avail {
+      if value == true {
+        conn = hbase_conn_pool[i]
+        conn_index = i
+        is_avail[i] = false
         break
       }
     }
-    if conn != nil {
-      break
-    }
-    time.Sleep(QUEUE_WAIT_TIME)
+    time.Sleep(1)
   }
-  data, err := conn.Get(Q3_TABLE, []byte(user_id), "retweeter_id", nil)
+  data, err := conn.Get(q3table, []byte(user_id), "retweeter_id", nil)
   is_avail[conn_index] = true
 
   // Handle error
@@ -140,7 +137,7 @@ func q3(req *http.Request) (string, error) {
 }
 
 func connect_hbase() (conn *goh.HClient, err error) {
-  address := fmt.Sprintf("%s:9090", DB_ADDRESS)
+  address := fmt.Sprintf("%s:9090", db_address)
   if conn, err = goh.NewTcpClient(address, goh.TBinaryProtocol, false); err != nil {
     fmt.Println("NewTcpClient :: " + err.Error())
     return nil, err //os.Exit(3)
@@ -175,25 +172,21 @@ func (s Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-  if (DB_ADDRESS == "") {
+  if (db_address == "") {
     fmt.Println("WARNING: No database address specified.")
   } else {
-    fmt.Println("Database address:", DB_ADDRESS)
-    fmt.Println("Establishing connections to database. Please wait..")
+    fmt.Println("Database address:", db_address)
 
-    conn_ok_count := 0
     for i := 0; i < POOL_SIZE; i++ {
       conn, _ := connect_hbase()
       if conn != nil {
         hbase_conn_pool[i] = conn
         is_avail[i] = true
-        //fmt.Println("Database connected! (", i, ")")
-        conn_ok_count += 1
+        fmt.Println("Database connected! (", i, ")")
       } else {
-        //fmt.Println("Could not connect to database. (", i, ")")
+        fmt.Println("Could not connect to database. (", i, ")")
       }
     }
-    fmt.Println(conn_ok_count, "connections connected!")
   }
 
   // Start server
