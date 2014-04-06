@@ -21,8 +21,8 @@ var mutex = &sync.Mutex{}
 type Server struct {}
 
 const LISTEN_PORT = "80"
-const POOL_SIZE =2500
-const QUEUE_WAIT_TIME=1
+const POOL_SIZE =1000
+const QUEUE_WAIT_TIME=10
 const Q2_TABLE = "q2phase2"
 const Q3_TABLE = "q3phase2"
 const DB_ADDRESS = "ec2-54-209-42-2.compute-1.amazonaws.com" /*** Put HBase address here! ***/
