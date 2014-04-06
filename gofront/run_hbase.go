@@ -25,7 +25,7 @@ const POOL_SIZE =1000
 const QUEUE_WAIT_TIME=500
 const Q2_TABLE = "q2phase2"
 const Q3_TABLE = "q3phase2"
-const DB_ADDRESS = "emr-1433567233.us-east-1.elb.amazonaws.com" /*** Put HBase address here! ***/
+const DB_ADDRESS = "ec2-54-85-111-90.compute-1.amazonaws.com" /*** Put HBase address here! ***/
 const RESP_FIRST_LINE = "GiraffeLovers,5148-7320-2582\n"
 
 var hbase_conn_pool [POOL_SIZE]*goh.HClient
