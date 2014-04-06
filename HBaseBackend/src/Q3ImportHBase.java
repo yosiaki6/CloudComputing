@@ -63,6 +63,7 @@ public class Q3ImportHBase extends Configured implements Tool {
 							Constants.FAMILY_RETWEETER_ID);
 					HTableDescriptor hTableDesc = new HTableDescriptor(
 							tableName);
+					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "104857600");
 					hTableDesc.addFamily(hColDesc);
 					admin.createTable(hTableDesc);
 					admin.close();

@@ -53,7 +53,7 @@ func q2(req *http.Request) (string, error) {
   user_id := req.FormValue("userid")
   tweet_time := req.FormValue("tweet_time")
   tweet_time = strings.Replace(tweet_time, " ", "+", 1)
-  row_key := user_id + "|" + tweet_time
+  row_key := tweet_time + "|" + user_id
   query_count++
 
   // Query
