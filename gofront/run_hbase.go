@@ -21,7 +21,7 @@ var mutex = &sync.Mutex{}
 type Server struct {}
 
 const LISTEN_PORT = "80"
-const POOL_SIZE =1000
+const POOL_SIZE =3000
 const QUEUE_WAIT_TIME=10
 const Q2_TABLE = "q2phase2"
 const Q3_TABLE = "q3phase2"
