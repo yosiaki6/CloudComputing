@@ -24,7 +24,7 @@ const LISTEN_PORT = "80"
 const POOL_SIZE = 100
 const q2table = "q2phase2"
 const q3table = "q3phase2"
-const db_address = "ec2-54-85-80-199.compute-1.amazonaws.com" // *** Put HBase address here! ***
+const db_address = "ec2-54-85-80-199.compute-1.amazonaws.com" /*** Put HBase address here! ***/
 const default_header = "GiraffeLovers,5148-7320-2582\n"
 
 var hbase_conn_pool [POOL_SIZE]*goh.HClient
