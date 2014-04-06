@@ -37,7 +37,7 @@ public class Q2ImportHBase extends Configured implements Tool {
 		
 		public void map(Text key, Text value, OutputCollector<Text, Text> output, Reporter reporter) throws IOException {
 			String[] token = value.toString().split("\t");
-			outKey.set(key.toString() + "|" + token[0]);
+			outKey.set(token[0] + "|" + key.toString());
 			outValue.set(token[1]);
 			output.collect(outKey, outValue);
 		}
@@ -63,6 +63,7 @@ public class Q2ImportHBase extends Configured implements Tool {
 				if (!admin.tableExists(tableName)) {
 					HColumnDescriptor hColDesc = new HColumnDescriptor(Constants.FAMILY_TWEET_ID);
 					HTableDescriptor hTableDesc = new HTableDescriptor(tableName);
+					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "1073741824");
 					hTableDesc.addFamily(hColDesc);
 					admin.createTable(hTableDesc);
 					admin.close();
@@ -92,8 +93,8 @@ public class Q2ImportHBase extends Configured implements Tool {
 			
 			// To test output
 			String[] token = key.toString().split("\\|");
-			outKey.set(token[1]);
-			outValue.set(token[0] + "\t" + resultSemiColon);
+			outKey.set(token[0]);
+			outValue.set(token[1] + "\t" + resultSemiColon);
 			output.collect(outKey, outValue);
 		}
 		
