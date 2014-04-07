@@ -12,7 +12,7 @@ import (
   "sync"
   "syscall"
   "log"
-  //"errors"
+  "strconv"
 )
 var get_conn_mutex = &sync.Mutex{}
 var return_conn_mutex = &sync.Mutex{}
@@ -20,17 +20,18 @@ var mutex = &sync.Mutex{}
 
 type Server struct {}
 
-const LISTEN_PORT = "80"
-const POOL_SIZE =3000
-const QUEUE_WAIT_TIME=10
+var listen_port = "80"
+var pool_size = 3000
+const MAX_POOL_SIZE = 10000
+const QUEUE_WAIT_TIME= 1
 const Q2_TABLE = "q2phase2"
 const Q3_TABLE = "q3phase2"
-const DB_ADDRESS = "ec2-54-209-42-2.compute-1.amazonaws.com" /*** Put HBase address here! ***/
+const DB_ADDRESS = "localhost" /*** Put HBase address here! ***/
 const RESP_FIRST_LINE = "GiraffeLovers,5148-7320-2582\n"
 
-var hbase_conn_pool [POOL_SIZE]*goh.HClient
+var hbase_conn_pool [MAX_POOL_SIZE]*goh.HClient
 var avail_conn_queue []*goh.HClient
-var is_avail [POOL_SIZE]bool
+var is_avail [MAX_POOL_SIZE]bool
 var query_count = 0
 var next_queue = 0
 
@@ -61,13 +62,13 @@ func q2(req *http.Request) (string, error) {
   var conn_index int
   for conn == nil {
     x := next_queue
-    for i := 0; i < POOL_SIZE; i++ {
-      x = (next_queue + i) % POOL_SIZE
+    for i := 0; i < pool_size; i++ {
+      x = (next_queue + i) % pool_size
       if is_avail[x] == true {
         conn = hbase_conn_pool[x]
         conn_index = x
         is_avail[x] = false
-        next_queue = (next_queue + 1) % POOL_SIZE
+        next_queue = (next_queue + 1) % pool_size
         break
       }
     }
@@ -107,13 +108,13 @@ func q3(req *http.Request) (string, error) {
   var conn_index int
   for conn == nil {
     x := next_queue
-    for i := 0; i < POOL_SIZE; i++ {
-      x = (next_queue + i) % POOL_SIZE
+    for i := 0; i < pool_size; i++ {
+      x = (next_queue + i) % pool_size
       if is_avail[x] == true {
         conn = hbase_conn_pool[x]
         conn_index = x
         is_avail[x] = false
-        next_queue = (next_queue + 1) % POOL_SIZE
+        next_queue = (next_queue + 1) % pool_size
         break
       }
     }
@@ -175,11 +176,11 @@ func (s Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-  var custom_port = "80"
-  if len(os.Args) == 2 {
-    custom_port = os.Args[1]
-  } else {
-    custom_port = LISTEN_PORT
+  if len(os.Args) >= 2 {
+    listen_port = os.Args[1]
+  }
+  if len(os.Args) >= 3 {
+    pool_size, _ = strconv.Atoi(os.Args[2])
   }
 
   if (DB_ADDRESS == "") {
@@ -189,13 +190,15 @@ func main() {
     fmt.Println("Establishing connections to database. Please wait..")
 
     conn_ok_count := 0
-    for i := 0; i < POOL_SIZE; i++ {
+    for i := 0; i < pool_size; i++ {
       conn, _ := connect_hbase()
       if conn != nil {
         hbase_conn_pool[i] = conn
         is_avail[i] = true
-        //fmt.Println("Database connected! (", i, ")")
         conn_ok_count += 1
+        if conn_ok_count % 1000 == 0 {
+          fmt.Println(conn_ok_count, "from", pool_size)
+        }
       } else {
         //fmt.Println("Could not connect to database. (", i, ")")
       }
@@ -214,8 +217,8 @@ func main() {
     http.Handle("/q1", server)
     http.Handle("/q2", server)
     http.Handle("/q3", server)
-    fmt.Println("Server started at port "+custom_port)
-    if err := http.ListenAndServe(":" + custom_port, nil); err != nil {
+    fmt.Println("Server started at port "+listen_port)
+    if err := http.ListenAndServe(":" + listen_port, nil); err != nil {
         log.Fatal(err)
     }
   }()
