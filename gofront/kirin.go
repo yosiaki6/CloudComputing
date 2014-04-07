@@ -105,17 +105,17 @@ func q3(req *http.Request) (string, error) {
 
   // Query
   var conn *goh.HClient
-  if conn2, err2 := connect_hbase(); err2 != nil {
-    conn = conn2
-    fmt.Printf("(%d) connect_hbase :: %s\n", query_count, err2.Error())
-    return "", err2
+  var err error
+  if conn, err = connect_hbase(); err != nil {
+    fmt.Printf("(%d) connect_hbase :: %s\n", query_count, err.Error())
+    return "", err
   }
   defer conn.Close()
-  data, err := conn.Get(Q3_TABLE, []byte(user_id), "retweeter_id", nil)
+  data, err2 := conn.Get(Q3_TABLE, []byte(user_id), "retweeter_id", nil)
 
   // Handle error
-  if err != nil {
-    fmt.Printf("(%d) hbase_conn.Get :: %s\n", query_count, err.Error())
+  if err2 != nil {
+    fmt.Printf("(%d) hbase_conn.Get :: %s\n", query_count, err2.Error())
     return "", err
   }
 
