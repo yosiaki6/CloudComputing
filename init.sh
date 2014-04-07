@@ -1,12 +1,14 @@
 #!/bin/sh
 
+cd /home/hadoop
+
 # Get code
-git clone https://github.com/yosiaki6/CloudComputing.git
+/usr/bin/git clone https://github.com/yosiaki6/CloudComputing.git
 
 # Get go
-wget https://go.googlecode.com/files/go1.2.1.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.2.1.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.2.1.linux-amd64.tar.gz
+/usr/bin/wget https://go.googlecode.com/files/go1.2.1.linux-amd64.tar.gz
+/bin/tar -C /usr/local -xzf go1.2.1.linux-amd64.tar.gz
+sudo /bin/tar -C /usr/local -xzf go1.2.1.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
 mkdir ~/gocode
 export GOPATH=$HOME/gocode
@@ -16,12 +18,14 @@ go get github.com/sdming/goh
 mkdir -p ~/.vim/autoload ~/.vim/bundle; \
 curl -Sso ~/.vim/autoload/pathogen.vim \
     https://raw.github.com/tpope/vim-pathogen/master/autoload/pathogen.vim
-git clone https://github.com/phoorichet/vim-config.git
+/usr/bin/git clone https://github.com/phoorichet/vim-config.git
 cd vim-config
-git submodule init
-git submodule update
+/usr/bin/git submodule init
+/usr/bin/git submodule update
 cp .vimrc ~/.vimrc
 cp -r .vim/bundle/* ~/.vim/bundle/
 
 # Enable ll command
 alias ll=’ls -l’
+
+sudo sh -c "ulimit -n 999999"
