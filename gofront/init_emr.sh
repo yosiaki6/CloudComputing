@@ -21,14 +21,8 @@ cd vim-config
 cp .vimrc ~/.vimrc
 cp -r .vim/bundle/* ~/.vim/bundle/
 
-# Enable ll command
-alias ll='ls -l'
-
 # Install byobu
 sudo apt-get install byobu -y
-
-# Start thrift
-/home/hadoop/bin/hbase-daemon.sh start thrift
 
 # Get code
 cd /home/hadoop
