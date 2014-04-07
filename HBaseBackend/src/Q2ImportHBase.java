@@ -63,7 +63,7 @@ public class Q2ImportHBase extends Configured implements Tool {
 				if (!admin.tableExists(tableName)) {
 					HColumnDescriptor hColDesc = new HColumnDescriptor(Constants.FAMILY_TWEET_ID);
 					HTableDescriptor hTableDesc = new HTableDescriptor(tableName);
-					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "1073741824");
+//					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "1073741824");
 					hTableDesc.addFamily(hColDesc);
 					admin.createTable(hTableDesc);
 					admin.close();
