@@ -27,3 +27,12 @@ sudo apt-get install byobu -y
 # Get code
 cd /home/hadoop
 /usr/bin/git clone https://github.com/yosiaki6/CloudComputing.git
+
+# Get vertx
+/usr/bin/wget http://dl.bintray.com/vertx/downloads/vert.x-2.1RC3.tar.gz
+sudo /bin/tar -C /usr/local -xzf vert.x-2.1RC3.tar.gz
+sudo mv /usr/local/vert.x-2.1RC3 /usr/local/vertx
+export PATH=$PATH:/usr/local/vertx/bin
+
+# Copy necessary jars for vertx
+sudo cp /home/hadoop/CloudComputing/HBaseBackend/lib/*.jar /usr/local/vertx/lib
