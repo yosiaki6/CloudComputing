@@ -33,5 +33,3 @@ sudo apt-get install byobu -y
 # Get code
 cd /home/hadoop
 /usr/bin/git clone https://github.com/yosiaki6/CloudComputing.git
-cd /home/hadoop/CloudComputing/gofront
-sudo ./start.sh
