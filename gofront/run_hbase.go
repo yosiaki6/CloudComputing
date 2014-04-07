@@ -26,7 +26,7 @@ const MAX_POOL_SIZE = 10000
 const QUEUE_WAIT_TIME= 1
 const Q2_TABLE = "q2phase2"
 const Q3_TABLE = "q3phase2"
-const DB_ADDRESS = "localhost" /*** Put HBase address here! ***/
+var db_address = "localhost" /*** Put HBase address here! ***/
 const RESP_FIRST_LINE = "GiraffeLovers,5148-7320-2582\n"
 
 var hbase_conn_pool [MAX_POOL_SIZE]*goh.HClient
@@ -141,7 +141,7 @@ func q3(req *http.Request) (string, error) {
 }
 
 func connect_hbase() (conn *goh.HClient, err error) {
-  address := fmt.Sprintf("%s:9090", DB_ADDRESS)
+  address := fmt.Sprintf("%s:9090", db_address)
   if conn, err = goh.NewTcpClient(address, goh.TBinaryProtocol, false); err != nil {
     fmt.Println("NewTcpClient :: " + err.Error())
     return nil, err //os.Exit(3)
@@ -182,11 +182,14 @@ func main() {
   if len(os.Args) >= 3 {
     pool_size, _ = strconv.Atoi(os.Args[2])
   }
+  if len(os.Args) >= 4 {
+    db_address = os.Args[3]
+  }
 
-  if (DB_ADDRESS == "") {
+  if (db_address == "") {
     fmt.Println("WARNING: No database address specified.")
   } else {
-    fmt.Println("Database address:", DB_ADDRESS)
+    fmt.Println("Database address:", db_address)
     fmt.Println("Establishing connections to database. Please wait..")
 
     conn_ok_count := 0
