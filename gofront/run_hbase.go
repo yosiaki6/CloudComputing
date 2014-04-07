@@ -21,9 +21,9 @@ var mutex = &sync.Mutex{}
 type Server struct {}
 
 var listen_port = "80"
-var pool_size = 3000
-const MAX_POOL_SIZE = 10000
-const QUEUE_WAIT_TIME= 1
+var pool_size = 1000
+const MAX_POOL_SIZE = 25000
+const QUEUE_WAIT_TIME= 1000
 const Q2_TABLE = "q2phase2"
 const Q3_TABLE = "q3phase2"
 var db_address = "localhost" /*** Put HBase address here! ***/
