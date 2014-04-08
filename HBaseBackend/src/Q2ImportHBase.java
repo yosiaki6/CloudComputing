@@ -57,13 +57,14 @@ public class Q2ImportHBase extends Configured implements Tool {
 			
 			Configuration hbaseConf = HBaseConfiguration.create();
 			hbaseConf.set("hbase.zookeeper.quorum", hbaseAddress);
+			hbaseConf.setInt("hbase.regionserver.handler.count", 10000);
 			HBaseAdmin admin;
 			try {
 				admin = new HBaseAdmin(hbaseConf);
 				if (!admin.tableExists(tableName)) {
 					HColumnDescriptor hColDesc = new HColumnDescriptor(Constants.FAMILY_TWEET_ID);
 					HTableDescriptor hTableDesc = new HTableDescriptor(tableName);
-//					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "1073741824");
+//					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "3100000000");
 					hTableDesc.addFamily(hColDesc);
 					admin.createTable(hTableDesc);
 					admin.close();

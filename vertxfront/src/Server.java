@@ -24,6 +24,8 @@ public class Server extends Verticle {
 		String hbaseAddress = "localhost";
 		hbaseConf = HBaseConfiguration.create();
 		hbaseConf.set("hbase.zookeeper.quorum", hbaseAddress);
+		System.out.println(hbaseConf.getInt("hbase.regionserver.handler.count", 1234) + "****");
+
 		try {
 			q2table = new HTable(hbaseConf, "q2phase2");
 			q3table = new HTable(hbaseConf, "q3phase2");
