@@ -12,7 +12,7 @@ import org.vertx.java.core.Handler;
 import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.platform.Verticle;
 
-public class Server extends Verticle {
+public class Test extends Verticle {
 
   static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat(
       "yyyy-MM-dd HH:mm:ss");
