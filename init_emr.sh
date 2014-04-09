@@ -32,7 +32,9 @@ cd /home/hadoop
 /usr/bin/wget http://dl.bintray.com/vertx/downloads/vert.x-2.1RC3.tar.gz
 sudo /bin/tar -C /usr/local -xzf vert.x-2.1RC3.tar.gz
 sudo mv /usr/local/vert.x-2.1RC3 /usr/local/vertx
-export PATH=$PATH:/usr/local/vertx/bin
+echo >> /home/hadoop/.bashrc
+echo "# vertx" >> /home/hadoop/.bashrc
+echo "export PATH=\$PATH:/usr/local/vertx/bin" >> /home/hadoop/.bashrc
 
 # Copy necessary jars for vertx
 sudo cp /home/hadoop/CloudComputing/HBaseBackend/lib/*.jar /usr/local/vertx/lib
@@ -45,3 +47,7 @@ cd hannibal
 cp conf/hbase-site.template.xml conf/hbase-site.xml
 export HANNIBAL_HTTP_PORT=9999
 ./start &
+
+# ll alias
+echo >> /home/hadoop/.bashrc
+echo "alias ll='ls -l'" >> /home/hadoop/.bashrc
