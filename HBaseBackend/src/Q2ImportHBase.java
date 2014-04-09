@@ -1,4 +1,6 @@
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -30,6 +32,8 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 public class Q2ImportHBase extends Configured implements Tool {
+	
+	final static byte[] DATA_COLUMN_BYTES = Bytes.toBytes("d");
 
 	public static class Map extends MapReduceBase implements Mapper<Text, Text, Text, Text> {
 		Text outKey = new Text();
@@ -49,6 +53,7 @@ public class Q2ImportHBase extends Configured implements Tool {
 		Text outKey = new Text();
 		Text outValue = new Text();
 		List<Put> batch = new LinkedList<Put>();
+		MessageDigest md;
 		
 		@Override
 		public void configure(JobConf job) {
@@ -62,7 +67,7 @@ public class Q2ImportHBase extends Configured implements Tool {
 			try {
 				admin = new HBaseAdmin(hbaseConf);
 				if (!admin.tableExists(tableName)) {
-					HColumnDescriptor hColDesc = new HColumnDescriptor(Constants.FAMILY_TWEET_ID);
+					HColumnDescriptor hColDesc = new HColumnDescriptor(DATA_COLUMN_BYTES);
 					HTableDescriptor hTableDesc = new HTableDescriptor(tableName);
 //					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "3100000000");
 					hTableDesc.addFamily(hColDesc);
@@ -71,6 +76,12 @@ public class Q2ImportHBase extends Configured implements Tool {
 				}
 				table = new HTable(hbaseConf, tableName);
 			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			try {
+				md = MessageDigest.getInstance("MD5");
+			} catch (NoSuchAlgorithmException e) {
 				e.printStackTrace();
 			}
 		}
@@ -84,8 +95,10 @@ public class Q2ImportHBase extends Configured implements Tool {
 				resultSemiColon += str + ";";
 			}
 			// Put to HBase
-			Put put = new Put(Bytes.toBytes(key.toString()));
-			put.add(Constants.FAMILY_TWEET_ID, null, Bytes.toBytes(resultNewLine));
+			byte[] digestedKey;
+			digestedKey = md.digest(Bytes.toBytes(key.toString()));
+			Put put = new Put(digestedKey);
+			put.add(DATA_COLUMN_BYTES, null, Bytes.toBytes(resultNewLine));
 			batch.add(put);
 			if (batch.size() == 100000) {
 				table.put(batch);

@@ -1,4 +1,6 @@
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -14,13 +16,22 @@ import org.vertx.java.platform.Verticle;
 
 public class Server extends Verticle {
 
+	final static byte[] DATA_COLUMN_BYTES = Bytes.toBytes("d");
 	static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat(
 			"yyyy-MM-dd HH:mm:ss");
 	static final String TEAM_NAME = "GiraffeLovers,5148-7320-2582\n";
 	Configuration hbaseConf;
 	HTable q2table, q3table;
+	MessageDigest md;
 	
 	public void start() {
+		try {
+			md = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+			return;
+		}
+		
 		String hbaseAddress = "localhost";
 		hbaseConf = HBaseConfiguration.create();
 		hbaseConf.set("hbase.zookeeper.quorum", hbaseAddress);
@@ -50,11 +61,12 @@ public class Server extends Verticle {
 					tweetTime = tweetTime.replace(' ', '+');
 					String userId = req.params().get("userid");
 					String rowKey = tweetTime + "|" + userId;
-					Get get = new Get(Bytes.toBytes(rowKey));
-					get.addFamily(Bytes.toBytes("tweet_id"));
+					byte[] digestedKey = md.digest(Bytes.toBytes(rowKey));
+					Get get = new Get(digestedKey);
+					get.addFamily(DATA_COLUMN_BYTES);
 					Result r = q2table.get(get);
 					if (!r.isEmpty()) {
-						byte[] rawResult = r.getValue(Bytes.toBytes("tweet_id"), null);
+						byte[] rawResult = r.getValue(DATA_COLUMN_BYTES, null);
 						result += new String(rawResult);
 					}
 				} catch (IOException e) {
