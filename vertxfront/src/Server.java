@@ -81,11 +81,11 @@ public class Server extends Verticle {
 				
 				try {
 					String userId = req.params().get("userid");
-					Get get = new Get(Bytes.toBytes(userId));
-					get.addFamily(Bytes.toBytes("retweeter_id"));
+					Get get = new Get(Bytes.toBytes(Long.parseLong(userId)));
+					get.addFamily(DATA_COLUMN_BYTES);
 					Result r = q3table.get(get);
 					if (!r.isEmpty()) {
-						byte[] rawResult = r.getValue(Bytes.toBytes("retweeter_id"), null);
+						byte[] rawResult = r.getValue(DATA_COLUMN_BYTES, null);
 						result += new String(rawResult);
 					}
 				} catch (IOException e) {

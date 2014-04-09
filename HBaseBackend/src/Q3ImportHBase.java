@@ -30,6 +30,8 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 public class Q3ImportHBase extends Configured implements Tool {
+	
+	final static byte[] DATA_COLUMN_BYTES = Bytes.toBytes("d");
 
 	public static class Map extends MapReduceBase implements
 			Mapper<Text, Text, Text, Text> {
@@ -59,11 +61,9 @@ public class Q3ImportHBase extends Configured implements Tool {
 			try {
 				admin = new HBaseAdmin(hbaseConf);
 				if (!admin.tableExists(tableName)) {
-					HColumnDescriptor hColDesc = new HColumnDescriptor(
-							Constants.FAMILY_RETWEETER_ID);
-					HTableDescriptor hTableDesc = new HTableDescriptor(
-							tableName);
-					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "400000000");
+					HColumnDescriptor hColDesc = new HColumnDescriptor(DATA_COLUMN_BYTES);
+					HTableDescriptor hTableDesc = new HTableDescriptor(tableName);
+//					hTableDesc.setValue(HTableDescriptor.MAX_FILESIZE, "400000000");
 					hTableDesc.addFamily(hColDesc);
 					admin.createTable(hTableDesc);
 					admin.close();
@@ -80,14 +80,17 @@ public class Q3ImportHBase extends Configured implements Tool {
 			while (values.hasNext()) {
 				Text value = values.next();
 				String converted = value.toString().replace(';', '\n');
-				Put put = new Put(Bytes.toBytes(key.toString()));
-				put.add(Constants.FAMILY_RETWEETER_ID, null,
-						Bytes.toBytes(converted));
+				
+				// Put to HBase
+				Put put = new Put(Bytes.toBytes(Long.parseLong(key.toString())));
+				put.add(DATA_COLUMN_BYTES, null, Bytes.toBytes(converted));
 				batch.add(put);
 				if (batch.size() == 100000) {
 					table.put(batch);
 					batch.clear();
 				}
+				
+				// Normal output
 				output.collect(key, value);
 			}
 		}
