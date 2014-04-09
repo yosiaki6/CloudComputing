@@ -3,6 +3,8 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -28,7 +30,20 @@ public class WarmUp {
 			
 			Scan scan = new Scan();
 			scan.addFamily(Bytes.toBytes("d"));
-			q2table.getScanner(scan);
+			ResultScanner rs = q2table.getScanner(scan);
+			int count=0;
+			try {
+				for (Result r = rs.next(); r != null; r = rs.next()) {
+					count++;
+					if (count % 10000 == 0) {
+						byte[] key = r.getRow();
+						byte[] value = r.getValue(Bytes.toBytes("d"), null);
+						System.out.println(count + ": "+new String(key) + " => "+new String(value));
+					}
+				}
+			} finally {
+				rs.close();
+			}
 			
 			q2table.close();
 			q3table.close();
