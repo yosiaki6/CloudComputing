@@ -36,10 +36,10 @@ public class Server extends Verticle {
 		hbaseConf = HBaseConfiguration.create();
 		hbaseConf.set("hbase.zookeeper.quorum", hbaseAddress);
 		System.out.println("hbase.client.max.total.tasks = "+hbaseConf.getInt("hbase.client.max.total.tasks", 1234));
-		hbaseConf.set("hbase.client.max.total.tasks", 888);
+		hbaseConf.setInt("hbase.client.max.total.tasks", 888);
 		System.out.println("**hbase.client.max.total.tasks = "+hbaseConf.getInt("hbase.client.max.total.tasks", 1234));
 		System.out.println("hbase.client.max.perserver.tasks = "+hbaseConf.getInt("hbase.client.max.perserver.tasks", 5678));
-		hbaseConf.set("hbase.client.max.perserver.tasks", 55);
+		hbaseConf.setInt("hbase.client.max.perserver.tasks", 55);
 		System.out.println("**hbase.client.max.perserver.tasks = "+hbaseConf.getInt("hbase.client.max.perserver.tasks", 5678));
 
 		try {
