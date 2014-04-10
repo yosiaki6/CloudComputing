@@ -38,16 +38,3 @@ echo "export PATH=\$PATH:/usr/local/vertx/bin" >> /home/hadoop/.bashrc
 
 # Copy necessary jars for vertx
 sudo cp /home/hadoop/CloudComputing/HBaseBackend/lib/*.jar /usr/local/vertx/lib
-
-# Get hannibal
-cd /home/hadoop
-wget https://github.com/sentric/hannibal/releases/download/v.0.10.0/hannibal-hbase0.94.tgz
-tar -xf "hannibal-hbase0.94.tgz"
-cd hannibal
-cp conf/hbase-site.template.xml conf/hbase-site.xml
-export HANNIBAL_HTTP_PORT=9999
-./start &
-
-# ll alias
-echo >> /home/hadoop/.bashrc
-echo "alias ll='ls -l'" >> /home/hadoop/.bashrc
