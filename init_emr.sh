@@ -43,3 +43,7 @@ sudo cp /home/hadoop/CloudComputing/HBaseBackend/lib/*.jar /usr/local/vertx/lib
 cd /home/hadoop
 wget https://github.com/sentric/hannibal/releases/download/v.0.10.0/hannibal-hbase0.94.tgz
 tar -xzf hannibal-hbase0.94.tgz
+cp conf/hbase-site.template.xml conf/hbase-site.xml
+echo >> /home/hadoop/.bashrc
+echo "# hannibal" >> /home/hadoop/.bashrc
+echo "export HANNIBAL_HTTP_PORT=9999" >> /home/hadoop/.bashrc
