@@ -8,11 +8,8 @@ import (
   "net/http"
   "os"
   "os/signal"
-  "strconv"
-  "strings"
   "syscall"
   "time"
-  "log"
   "runtime"
   _ "github.com/go-sql-driver/mysql"
 )
@@ -21,9 +18,10 @@ const (
   // Database
   CONNECTION_STRING     = "giraffe:giraffe@tcp(localhost:3306)/cloud"
   MAX_CONNECTION_COUNT  = 256
-  Q4_SELECT             = "SELECT * FROM q4 WHERE tweet_time = ?"
+  Q4_SELECT             = "SELECT tweet_id, tweet_text FROM q4 WHERE tweet_time = ?"
 
   RESP_FIRST_LINE       = "GiraffeLovers,5148-7320-2582\n"
+  TIME_FORMAT           = "2006-01-02 15:04:05"
 )
 
 var (
@@ -62,6 +60,7 @@ func main() {
       log.Fatalf("Error starting server: %s", err.Error())
     }
   }()
+  fmt.Println("Server started")
 
   // Block until interrupted or SIGTERM
   sigchan := make(chan os.Signal, 1)
@@ -93,26 +92,32 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
   var buffer bytes.Buffer
   buffer.WriteString(RESP_FIRST_LINE)
 
-  // Take parameters
-  tweet_time, err := strconv.ParseInt(req.FormValue("time"), 10, 64)
+  // Get time param (must change to ms before query)
+  input := req.FormValue("time")
+  t, err := time.Parse(TIME_FORMAT, req.FormValue("time"))
   if err != nil {
     log.Fatalf("Parameter error: %s", err.Error())
     return
   }
+  tweet_time := t.Unix() * 1000
+  //fmt.Println(input, "=>", tweet_time)
 
   // Query
-  rows, err := q4_stmt.Query(Q4_SELECT, tweet_time)
+  rows, err := q4_stmt.Query(tweet_time)
   if err != nil {
     log.Fatalf("Error in query: %s", err.Error())
     return
   }
+  //fmt.Println("Query complete")
+  var tweet_id int64
+  var tweet_text string
   for rows.Next() {
-    err = rows.Scan(&tweet_id)
+    err = rows.Scan(&tweet_id, &tweet_text)
     if err != nil {
       log.Fatalf("Error in rows scan: %s", err.Error())
       return
     }
-    buffer.WriteString(tweet_id)
+    buffer.WriteString(fmt.Sprintf("%d:%s\n", tweet_id, tweet_text))
   }
 
   resp.Write([]byte(buffer.String()))

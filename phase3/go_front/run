@@ -1,0 +1,6 @@
+#!/bin/sh
+
+export GOROOT=/usr/local/go
+export GOPATH=/home/ec2-user/go
+export PATH=$PATH:$GOROOT/bin
+go run q4_q6.go
