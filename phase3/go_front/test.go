@@ -25,7 +25,6 @@ const POOL_SIZE = 0
 const BACKEND_SIZE = 3
 
 var db_conn_pool [][]*sql.DB
-var stmtOut_pool [][]*sql.Stmt
 var index_pool [][]int
 var backend_server [BACKEND_SIZE]string
 
