@@ -20,7 +20,8 @@ func main() {
         if err != nil {
                 log.Fatalf("Error opening database: %v", err)
         }
-        db.SetMaxOpenConns(10)
+        db.SetMaxOpenConns(20)
+        db.SetMaxIdleConns(20)
         stmt, err := db.Prepare("select count(*) from plan1")
         if err != nil {
                 log.Fatal(err)
