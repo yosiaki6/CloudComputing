@@ -94,7 +94,7 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
 
   // Get time param (must change to ms before query)
   input := req.FormValue("time")
-  t, err := time.Parse(TIME_FORMAT, req.FormValue("time"))
+  t, err := time.Parse(TIME_FORMAT, input)
   if err != nil {
     log.Fatalf("Parameter error: %s", err.Error())
     return
