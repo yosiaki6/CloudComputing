@@ -11,6 +11,7 @@ import (
   "syscall"
   "time"
   "runtime"
+  "strings"
   _ "github.com/go-sql-driver/mysql"
 )
 
@@ -18,7 +19,7 @@ const (
   // Database
   CONNECTION_STRING     = "giraffe:giraffe@tcp(localhost:3306)/cloud"
   MAX_CONNECTION_COUNT  = 256
-  Q4_SELECT             = "SELECT tweet_id, tweet_text FROM q4 WHERE tweet_time = ?"
+  Q4_SELECT             = "SELECT tweet_id, tweet_text FROM q4 WHERE tweet_time = ? ORDER BY tweet_id"
 
   RESP_FIRST_LINE       = "GiraffeLovers,5148-7320-2582\n"
   TIME_FORMAT           = "2006-01-02 15:04:05"
@@ -93,7 +94,7 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
   buffer.WriteString(RESP_FIRST_LINE)
 
   // Get time param (must change to ms before query)
-  input := req.FormValue("time")
+  input := strings.TrimSpace(req.FormValue("time"))
   t, err := time.Parse(TIME_FORMAT, input)
   if err != nil {
     log.Fatalf("Parameter error: %s", err.Error())
