@@ -12,9 +12,9 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
-	"sync"
 )
 
 const (
@@ -46,7 +46,8 @@ type Server struct{}
 func (s Server) getConnetion(server_id int) (*sql.DB, int) {
 	var index int
 	mutex_pool[server_id].Lock()
-	if len(index_pool[server_id]) == 0 {}
+	if len(index_pool[server_id]) == 0 {
+	}
 	index, index_pool[server_id] = index_pool[server_id][len(index_pool[server_id])-1], index_pool[server_id][:len(index_pool[server_id])-1]
 	mutex_pool[server_id].Unlock()
 	return db_conn_pool[server_id][index], index
@@ -62,24 +63,8 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// Connect MySQL
-	/*
-		var err error
-		for i := 0; i < 5; i++ {
-			db[i], err = sql.Open("mysql", user+":"+pass+"@tcp("+db_server[i]+":3306)/cloud")
-			if err != nil {
-				log.Fatalf("Error %s", err.Error())
-			}
-
-			db[i].SetMaxIdleConns(MAX_CONNECTION_COUNT)
-			db[i].SetMaxOpenConns(MAX_CONNECTION_COUNT)
-			err = db[i].Ping() // This DOES open a connection if necessary. This makes sure the database is accessible
-			if err != nil {
-				log.Fatalf("Error on opening database connection: %s", err.Error())
-			}
-		}
-	*/
 	for server_index := 0; server_index < len(db_server); server_index++ {
-		mutex_pool = append(mutex_pool,  &sync.Mutex{})
+		mutex_pool = append(mutex_pool, &sync.Mutex{})
 		index_pool = append(index_pool, make([]int, 0))
 		db_conn_pool = append(db_conn_pool, make([]*sql.DB, 0))
 		for i := 0; i < MAX_CONNECTION_COUNT; i++ {
@@ -119,6 +104,10 @@ func (s Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
 	case "/q1":
 		s.q1(resp, req)
+	case "/q2":
+		s.q2(resp, req)
+	case "/q3":
+		s.q3(resp, req)
 	case "/q4":
 		s.q4(resp, req)
 	case "/q6":
@@ -131,6 +120,90 @@ func (s Server) q1(resp http.ResponseWriter, req *http.Request) {
 	var t = time.Now()
 	buffer.WriteString(RESP_FIRST_LINE)
 	buffer.WriteString(fmt.Sprintf("%04d-%02d-%02d+%02d:%02d:%02d\n", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second()))
+	resp.Write([]byte(buffer.String()))
+}
+
+func (s Server) q2(resp http.ResponseWriter, req *http.Request) {
+	var buffer bytes.Buffer
+	buffer.WriteString(RESP_FIRST_LINE)
+	var tweet_id string
+	user_id_string := req.FormValue("userid")
+	tweet_time := req.FormValue("tweet_time")
+	tweet_time = strings.Replace(tweet_time, " ", "+", 1)
+	user_id_int64, err := strconv.ParseInt(user_id_string, 0, 64)
+	var server_id int
+
+	switch {
+	case user_id_int64 <= 197834718:
+		server_id = 0
+	case 197834718 < user_id_int64 && user_id_int64 <= 396767602:
+		server_id = 1
+	case 396767602 < user_id_int64 && user_id_int64 <= 742870590:
+		server_id = 2
+	case 742870590 < user_id_int64 && user_id_int64 <= 1584744955:
+		server_id = 3
+	case 1584744955 < user_id_int64:
+		server_id = 4
+	}
+
+	db, index := s.getConnetion(server_id)
+	rows, err := db.Query("SELECT tweet_id FROM q2 WHERE user_id = ? and tweet_time = ?", user_id_int64, tweet_time)
+	if err != nil {
+		panic(err.Error()) // proper error handling instead of panic in your app
+		return
+	}
+	for rows.Next() {
+		err = rows.Scan(&tweet_id)
+		if err != nil {
+			panic(err.Error())
+			return
+		}
+		buffer.WriteString(tweet_id)
+		buffer.WriteString("\n")
+	}
+
+	s.releaseConnection(server_id, index)
+
+	resp.Write([]byte(buffer.String()))
+}
+
+func (s Server) q3(resp http.ResponseWriter, req *http.Request) {
+	var buffer bytes.Buffer
+	buffer.WriteString(RESP_FIRST_LINE)
+	var retweet_users string
+	user_id_string := req.FormValue("userid")
+	tweet_time := req.FormValue("tweet_time")
+	tweet_time = strings.Replace(tweet_time, " ", "+", 1)
+	user_id_int64, err := strconv.ParseInt(user_id_string, 0, 64)
+	var server_id int
+
+	switch {
+	case user_id_int64 < 171962889:
+		server_id = 0
+	case 171962889 <= user_id_int64 && user_id_int64 < 361283047:
+		server_id = 1
+	case 361283047 <= user_id_int64 && user_id_int64 < 591298618:
+		server_id = 2
+	case 591298618 <= user_id_int64 && user_id_int64 < 1344745392:
+		server_id = 3
+	case 1344745392 < user_id_int64:
+		server_id = 4
+	}
+
+	db, index := s.getConnetion(server_id)
+	err = db.QueryRow("SELECT retweet_users FROM q3 WHERE user_id = ?", user_id_int64).Scan(&retweet_users)
+	if err != nil {
+		panic(err.Error()) // proper error handling instead of panic in your app
+		return
+	}
+	user_id_set := strings.Split(retweet_users, ";")
+	for i := 0; i < len(user_id_set)-1; i++ {
+		buffer.WriteString(user_id_set[i])
+		buffer.WriteString("\n")
+	}
+
+	s.releaseConnection(server_id, index)
+
 	resp.Write([]byte(buffer.String()))
 }
 
@@ -235,18 +308,10 @@ func (s Server) q6(resp http.ResponseWriter, req *http.Request) {
 	go func() {
 		var tmpUser int64
 		db, index := s.getConnetion(server_id_max)
-		err = db.QueryRow("select afterRowNum from q2 where user_id = ?", user_max).Scan(&tmpUser)
+		err = db.QueryRow("select afterRowNum from q2 where user_id = ( select user_id from q2 where user_id > ? limit 1) limit 1", user_max).Scan(&tmpUser)
 		switch {
 		case err == sql.ErrNoRows:
-			err = db.QueryRow("select afterRowNum from q2 where user_id = ( select user_id from q2 where user_id > ? limit 1) limit 1", user_max).Scan(&tmpUser)
-		switch {
-		case err == sql.ErrNoRows:
-			tmpUser = 0	
-		case err != nil:
-			log.Printf(table_name+":%d %d", user_min, user_max)
-			log.Fatal(err)
-		}
-			
+			tmpUser = 0
 		case err != nil:
 			log.Printf(table_name+":%d %d", user_min, user_max)
 			log.Fatal(err)
