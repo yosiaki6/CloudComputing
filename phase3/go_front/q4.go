@@ -41,7 +41,7 @@ var (
     "ec2-54-86-50-175.compute-1.amazonaws.com",
     "ec2-54-86-5-148.compute-1.amazonaws.com",
     "ec2-54-86-55-55.compute-1.amazonaws.com",
-    "ec2-54-86-9-193.compute-1.amazonaws.com"
+    "ec2-54-86-9-193.compute-1.amazonaws.com",
   }
   q6_stmt    *sql.Stmt
 )
@@ -147,19 +147,20 @@ func (s Server) q2(resp http.ResponseWriter, req *http.Request) {
       conn = backend[i]
     }
   }
-  var rows *Rows
+  var rows *sql.Rows
   rows, err = conn.Query(Q2_SELECT, user_id, tweet_time)
   if err != nil {
     panic(err.Error())
     return
   }
+  var tweet_id int64
   for rows.Next() {
     err = rows.Scan(&tweet_id)
     if err != nil {
       panic(err.Error())
-      return ""
+      return
     }
-    buffer.WriteString(tweet_id)
+    buffer.WriteString(fmt.Sprintf("%d\n",tweet_id))
   }
 
   resp.Write([]byte(buffer.String()))
