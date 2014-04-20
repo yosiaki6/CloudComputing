@@ -18,17 +18,10 @@ import (
 
 const (
 	// Database
-	/*
-	   db_server_1 = "ec2-54-86-13-44.compute-1.amazonaws.com"
-	   db_server_2 = "ec2-54-86-30-1.compute-1.amazonaws.com"
-	   db_server_3 = "ec2-54-86-21-73.compute-1.amazonaws.com"
-	   db_server_4 = "ec2-54-86-11-160.compute-1.amazonaws.com"
-	   db_server_5 = "ec2-54-85-190-60.compute-1.amazonaws.com"
-	*/
 	user = "giraffe"
 	pass = "giraffe"
 	//  CONNECTION_STRING     = "giraffe:giraffe@tcp(localhost:3306)/cloud"
-	MAX_CONNECTION_COUNT = 20
+	MAX_CONNECTION_COUNT = 2000
 	Q4_SELECT            = "SELECT tweet_id, tweet_text FROM q4 WHERE tweet_time = ? ORDER BY tweet_id"
 	Q6_SELECT            = "SELECT count(*) FROM q6 WHERE user_min = ? AND user_max = ?"
 
@@ -37,7 +30,7 @@ const (
 )
 
 var (
-	db_server = [5]string{"ec2-54-86-13-44.compute-1.amazonaws.com", "ec2-54-86-30-1.compute-1.amazonaws.com", "ec2-54-86-21-73.compute-1.amazonaws.com", "ec2-54-86-11-160.compute-1.amazonaws.com", "ec2-54-85-190-60.compute-1.amazonaws.com"}
+	db_server = [5]string{"ec2-54-85-49-4.compute-1.amazonaws.com", "ec2-54-86-50-175.compute-1.amazonaws.com", "ec2-54-86-5-148.compute-1.amazonaws.com", "ec2-54-86-55-55.compute-1.amazonaws.com", "ec2-54-86-9-193.compute-1.amazonaws.com"}
 	db_size   = [5]int64{14196778, 14196772, 14196791, 14196825, 14196692}
 	db        [5]*sql.DB
 	q4_stmt   *sql.Stmt
@@ -89,8 +82,8 @@ func (s Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		s.q1(resp, req)
 	case "/q4":
 		s.q4(resp, req)
-		 case "/q6":
-		 s.q6(resp, req)
+	case "/q6":
+		s.q6(resp, req)
 	}
 }
 
@@ -139,7 +132,8 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
 func (s Server) q6(resp http.ResponseWriter, req *http.Request) {
 	var buffer bytes.Buffer
 	buffer.WriteString(RESP_FIRST_LINE)
-	finished := make(chan int64)
+	finished_min := make(chan int64)
+	finished_max := make(chan int64)
 
 	var user int64
 	var table_name string
@@ -184,83 +178,36 @@ func (s Server) q6(resp http.ResponseWriter, req *http.Request) {
 		server_id_max = 4
 	}
 
-	if server_id_min == server_id_max {
+	go func() {
+		var tmpUser int64
+		err = db[server_id_min].QueryRow("select afterRowNum from q2 where user_id = ( select user_id from q2 where user_id >= ? limit 1) limit 1", user_min).Scan(&tmpUser)
 		switch {
-		case server_id_min == 0:
-			table_name = "q2_1"
-		case server_id_min == 1:
-			table_name = "q2_2"
-		case server_id_min == 2:
-			table_name = "q2_3"
-		case server_id_min == 3:
-			table_name = "q2_4"
-		case server_id_min == 4:
-			table_name = "q2_5"
-		}		
-		err = db[server_id_min].QueryRow("select count(*) from " + table_name + " where user_id between ? and ?",  user_min, user_max).Scan(&user)
-		switch {
-			case err == sql.ErrNoRows:
-			log.Printf("No user with that ID.")
-			case err != nil:
-			log.Printf(table_name + ":%d %d", user_min, user_max)
+		case err == sql.ErrNoRows:
+			tmpUser = 0
+		case err != nil:
+			log.Printf(table_name+":%d %d", user_min, user_max)
 			log.Fatal(err)
 		}
-	} else {
-		go func(){
-		var tmp_user int64
-		switch {
-		case server_id_min == 0:
-			table_name = "q2_1"
-		case server_id_min == 1:
-			table_name = "q2_2"
-		case server_id_min == 2:
-			table_name = "q2_3"
-		case server_id_min == 3:
-			table_name = "q2_4"
-		case server_id_min == 4:
-			table_name = "q2_5"
-		}		
-		err = db[server_id_min].QueryRow("select count(*) from " + table_name + " where user_id >= ?", user_min).Scan(&tmp_user)
-		switch {
-			case err == sql.ErrNoRows:
-			log.Printf("No user with that ID.")
-			case err != nil:
-			log.Printf(table_name + ":%d", user_min)
-			log.Fatal(err)
-		}
-		finished <- tmp_user
-		}()
+		finished_min <- tmpUser
+	}()
 
-		go func(){
-		var tmp_user int64
+	go func() {
+		var tmpUser int64
+		err = db[server_id_max].QueryRow("select afterRowNum from q2 where user_id = ( select user_id from q2 where user_id > ? limit 1) limit 1", user_max).Scan(&tmpUser)
 		switch {
-		case server_id_max == 0:
-			table_name = "q2_1"
-		case server_id_max == 1:
-			table_name = "q2_2"
-		case server_id_max == 2:
-			table_name = "q2_3"
-		case server_id_max == 3:
-			table_name = "q2_4"
-		case server_id_max == 4:
-			table_name = "q2_5"
-		}		
-		err = db[server_id_max].QueryRow("select count(*) from " + table_name +"  where user_id <= ?",  user_max).Scan(&tmp_user)
-		switch {
-			case err == sql.ErrNoRows:
-			log.Printf("No user with that ID.")
-			case err != nil:
-			log.Printf(table_name + ":%d", user_max)
+		case err == sql.ErrNoRows:
+			tmpUser = 0
+		case err != nil:
+			log.Printf(table_name+":%d %d", user_min, user_max)
 			log.Fatal(err)
 		}
-		finished <- tmp_user
-		}()
-		
-		user += <- finished
-		user += <- finished
-		for i:= server_id_min +1; i < server_id_max; i++{
-			user += db_size[i]
-		}
+		finished_max <- tmpUser
+	}()
+
+	user += <-finished_min
+	user -= <-finished_max
+	for i := server_id_min + 1; i <= server_id_max; i++ {
+		user += db_size[i]
 	}
 
 	buffer.WriteString(fmt.Sprintf("%d\n", user))
