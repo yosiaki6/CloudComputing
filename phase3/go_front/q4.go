@@ -35,7 +35,7 @@ var (
   backend    [BACKEND_COUNT]*sql.DB
   q2_stmt    *sql.Stmt
   q4_stmt    *sql.Stmt
-  upbound = []int64 {1000,2000,3000,4000} // unlimited upper bound for backend[4]
+  q2_upbound = []int64 {197834718,396767602,742870590,1584744955} // unlimited upper bound for backend[4]
   address = []string {
     "ec2-54-85-49-4.compute-1.amazonaws.com",
     "ec2-54-86-50-175.compute-1.amazonaws.com",
@@ -75,10 +75,10 @@ func main() {
   }
 
   // Prepare statements
-  q2_stmt, err = db.Prepare(Q2_SELECT)
+  /*q2_stmt, err = db.Prepare(Q2_SELECT)
   if err != nil {
     log.Fatalf("Error preparing q2 statement: %s", err.Error())
-  }
+  }*/
   q4_stmt, err = db.Prepare(Q4_SELECT)
   if err != nil {
     log.Fatalf("Error preparing q4 statement: %s", err.Error())
@@ -142,9 +142,10 @@ func (s Server) q2(resp http.ResponseWriter, req *http.Request) {
   tweet_time = strings.Replace(tweet_time, " ", "+", 1)
 
   conn := backend[BACKEND_COUNT-1]
-  for i, v := range upbound {
-    if user_id_int < v {
+  for i, max_user_id := range q2_upbound {
+    if user_id_int <= max_user_id {
       conn = backend[i]
+      break
     }
   }
   var rows *sql.Rows
