@@ -18,16 +18,29 @@ import (
 const (
   // Database
   CONNECTION_STRING     = "giraffe:giraffe@tcp(localhost:3306)/cloud"
+  CONN_STRING           = "giraffe:giraffe@tcp(%s:3306)/cloud"
   MAX_CONNECTION_COUNT  = 256
+  Q2_SELECT             = "SELECT tweet_id FROM q2 WHERE user_id = ? AND tweet_time = ?"
   Q4_SELECT             = "SELECT tweet_id, tweet_text FROM q4 WHERE tweet_time = ? ORDER BY tweet_id"
 
   RESP_FIRST_LINE       = "GiraffeLovers,5148-7320-2582\n"
   TIME_FORMAT           = "2006-01-02 15:04:05"
+  BACKEND_COUNT         = 5
 )
 
 var (
   db         *sql.DB
+  backend    [BACKEND_COUNT]*sql.DB
+  q2_stmt    *sql.Stmt
   q4_stmt    *sql.Stmt
+  upbound = []int64 {1000,2000,3000,4000} // unlimited upper bound for backend[4]
+  address = []string {
+    "ec2-54-85-49-4.compute-1.amazonaws.com",
+    "ec2-54-86-50-175.compute-1.amazonaws.com",
+    "ec2-54-86-5-148.compute-1.amazonaws.com",
+    "ec2-54-86-55-55.compute-1.amazonaws.com",
+    "ec2-54-86-9-193.compute-1.amazonaws.com"
+  }
 )
 
 type Server struct{}
@@ -37,17 +50,32 @@ func main() {
 
   // Connect MySQL
   var err error
+  
   db, err = sql.Open("mysql", CONNECTION_STRING)
-    if err != nil {
-      log.Fatalf("Error %s", err.Error())
+  if err != nil {
+    log.Fatalf("Error %s", err.Error())
   }
   db.SetMaxIdleConns(MAX_CONNECTION_COUNT)
   err = db.Ping() // This DOES open a connection if necessary. This makes sure the database is accessible
   if err != nil {
     log.Fatalf("Error on opening database connection: %s", err.Error())
   }
+  
+  for i, v := range address {
+    backend[i], err = sql.Open("mysql", fmt.Sprintf(CONN_STRING, v))
+    if err != nil {
+      log.Fatalf("Error")
+    }
+    if err = db.Ping(); err != nil {
+      log.Fatalf("Error")
+    }
+  }
 
   // Prepare statements
+  q2_stmt, err = db.Prepare(Q2_SELECT)
+  if err != nil {
+    log.Fatalf("Error preparing q2 statement: %s", err.Error())
+  }
   q4_stmt, err = db.Prepare(Q4_SELECT)
   if err != nil {
     log.Fatalf("Error preparing q4 statement: %s", err.Error())
@@ -74,10 +102,11 @@ func (s Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
   switch req.URL.Path {
   case "/q1":
     s.q1(resp, req)
-   case "/q4":
-     s.q4(resp, req)
-  // case "/q6":
-    // s.q6(resp, req)
+  case "/q2":
+    s.q2(resp, req)
+  case "/q4":
+    s.q4(resp, req)
+    //resp.Write([]byte("👍"))
   }
 }
 
@@ -86,6 +115,43 @@ func (s Server) q1(resp http.ResponseWriter, req *http.Request) {
   var t = time.Now()
   buffer.WriteString(RESP_FIRST_LINE)
   buffer.WriteString(fmt.Sprintf("%04d-%02d-%02d+%02d:%02d:%02d\n", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second()))
+  resp.Write([]byte(buffer.String()))
+}
+
+func (s Server) q2(resp http.ResponseWriter, req *http.Request) {
+  var buffer bytes.Buffer
+  buffer.WriteString(RESP_FIRST_LINE)
+
+  user_id := req.FormValue("userid")
+  user_id_int, err := strconv.ParseInt(user_id, 10, 64)
+  if err != nil {
+    panic(err.Error())
+    return
+  }
+  tweet_time := req.FormValue("tweet_time")
+  tweet_time = strings.Replace(tweet_time, " ", "+", 1)
+
+  conn := backend[BACKEND_COUNT-1]
+  for i, v := range upbound {
+    if user_id_int < v {
+      conn = backend[i]
+    }
+  }
+  var rows *Rows
+  rows, err = conn.Query(Q2_SELECT, user_id, tweet_time)
+  if err != nil {
+    panic(err.Error())
+    return
+  }
+  for rows.Next() {
+    err = rows.Scan(&tweet_id)
+    if err != nil {
+      panic(err.Error())
+      return ""
+    }
+    buffer.WriteString(tweet_id)
+  }
+
   resp.Write([]byte(buffer.String()))
 }
 
