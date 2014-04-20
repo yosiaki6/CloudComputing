@@ -12,6 +12,7 @@ import (
   "time"
   "runtime"
   "strings"
+  "strconv"
   _ "github.com/go-sql-driver/mysql"
 )
 
@@ -22,6 +23,7 @@ const (
   MAX_CONNECTION_COUNT  = 256
   Q2_SELECT             = "SELECT tweet_id FROM q2 WHERE user_id = ? AND tweet_time = ?"
   Q4_SELECT             = "SELECT tweet_id, tweet_text FROM q4 WHERE tweet_time = ? ORDER BY tweet_id"
+  Q6_SELECT             = "SELECT count(*) FROM q6 WHERE user_min = ? AND user_max = ?"
 
   RESP_FIRST_LINE       = "GiraffeLovers,5148-7320-2582\n"
   TIME_FORMAT           = "2006-01-02 15:04:05"
@@ -41,6 +43,7 @@ var (
     "ec2-54-86-55-55.compute-1.amazonaws.com",
     "ec2-54-86-9-193.compute-1.amazonaws.com"
   }
+  q6_stmt    *sql.Stmt
 )
 
 type Server struct{}
@@ -80,6 +83,13 @@ func main() {
   if err != nil {
     log.Fatalf("Error preparing q4 statement: %s", err.Error())
   }
+  /*
+  q6_stmt, err = db.Prepare(Q6_SELECT)
+  if err != nil {
+    log.Fatalf("Error preparing q6 statement: %s", err.Error())
+  }
+  */
+
 
   // Start web server 
   server := Server{}
@@ -175,7 +185,6 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
     log.Fatalf("Error in query: %s", err.Error())
     return
   }
-  //fmt.Println("Query complete")
   var tweet_id int64
   var tweet_text string
   for rows.Next() {
@@ -189,4 +198,33 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
 
   resp.Write([]byte(buffer.String()))
 }
+
+func (s Server) q6(resp http.ResponseWriter, req *http.Request) {
+  var buffer bytes.Buffer
+  buffer.WriteString(RESP_FIRST_LINE)
+
+  var user_min int64
+  var user_max int64
+  var err error
+  user_min, err = strconv.ParseInt(req.FormValue("user_min"), 10, 64)
+  if err != nil {
+    log.Fatalf("Parameter error user_min: %s", err.Error())
+  }
+  user_max, err = strconv.ParseInt(req.FormValue("user_max"), 10, 64)
+  if err != nil {
+    log.Fatalf("Parameter error user_max: %s", err.Error())
+  }
+
+  // Query
+  var count int64
+  err = q6_stmt.QueryRow(user_min, user_max).Scan(&count)
+  if err != nil {
+    log.Fatalf("Error in query: %s", err.Error())
+    return
+  }
+  buffer.WriteString(fmt.Sprintf("%d\n", count))
+
+  resp.Write([]byte(buffer.String()))
+}
+
 
