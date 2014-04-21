@@ -108,6 +108,8 @@ func (s Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		s.q3(resp, req)
 	case "/q4":
 		s.q4(resp, req)
+	case "/q5":
+		s.q5(resp, req)
 	case "/q6":
 		s.q6(resp, req)
 	}
@@ -254,6 +256,90 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	s.releaseConnection(server_id, index)
+
+	resp.Write([]byte(buffer.String()))
+}
+
+func (s Server) q5(resp http.ResponseWriter, req *http.Request) {
+	var buffer bytes.Buffer
+	buffer.WriteString(RESP_FIRST_LINE)
+
+	var tweet_id int64
+	var server_id_min int
+	var server_id_max int
+	//var table_name string	
+	var err error
+
+	input_start_time := strings.TrimSpace(req.FormValue("start_time"))
+	start_t, err := time.Parse(TIME_FORMAT, input_start_time)
+	if err != nil {
+        	//log.Fatalf("Parameter error: %s", err.Error())
+        	//return
+		//http.Error(resp, http.StatusText(400), 400)
+		resp.Write([]byte(buffer.String()))
+	 }
+        start_time := start_t.Unix()
+        //fmt.Println(input_start_time, "=>", start_time)
+
+        input_end_time := strings.TrimSpace(req.FormValue("end_time"))
+        end_t, err := time.Parse(TIME_FORMAT, input_end_time)
+        if err != nil {
+                //log.Fatalf("Parameter error: %s", err.Error())
+                //return
+		//http.Error(resp, http.StatusText(400), 400)
+		resp.Write([]byte(buffer.String()))
+        }
+        end_time := end_t.Unix()
+        //fmt.Println(input_end_time, "=>", end_time
+
+        place := req.FormValue("place")
+	//buffer.WriteString(RESP_FIRST_LINE)
+
+	switch {
+	case start_time < 1391220155:
+		server_id_min = 0
+	case 1391220155 <= start_time && start_time < 1392842875:
+		server_id_min = 1
+	case 1392842875 <= start_time && start_time < 1393714445:
+		server_id_min = 2
+	case 1393714445 <= start_time && start_time < 1394569456:
+		server_id_min = 3
+	case 1394569456 <= start_time:
+		server_id_min = 4
+	}
+	
+	switch {
+        case end_time < 1391220155:
+                server_id_max = 0
+        case 1391220155 <= end_time && end_time < 1392842875:
+                server_id_max = 1
+        case 1392842875 <= end_time && end_time < 1393714445:
+                server_id_max = 2
+        case 1393714445 <= end_time && end_time < 1394569456:
+                server_id_max = 3
+        case 1394569456 <= end_time:
+                server_id_max = 4
+        }
+
+	
+
+	for i := server_id_min; i <= server_id_max; i++ {
+		db, index := s.getConnetion(i)
+		rows, err := db.Query("SELECT tweet_id FROM q5 WHERE tweet_time >= ? AND tweet_time <= ? AND place = ?", start_time, end_time, place)
+		if err != nil {
+			panic(err.Error()) // proper error handling instead of panic in your app
+			return
+		}
+		for rows.Next() {
+			err = rows.Scan(&tweet_id)
+			if err != nil {
+				panic(err.Error())
+				return
+			}
+			buffer.WriteString(fmt.Sprintf("%d\n", tweet_id))	
+		}
+		s.releaseConnection(i, index)
+	}
 
 	resp.Write([]byte(buffer.String()))
 }
