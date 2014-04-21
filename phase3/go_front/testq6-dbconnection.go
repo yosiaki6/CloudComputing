@@ -21,10 +21,8 @@ const (
 	// Database
 	user = "giraffe"
 	pass = "giraffe"
-	//  CONNECTION_STRING     = "giraffe:giraffe@tcp(localhost:3306)/cloud"
 	MAX_CONNECTION_COUNT = 4000
 	Q4_SELECT            = "SELECT tweet_id, tweet_text FROM q4 WHERE tweet_time = ? ORDER BY tweet_id"
-	Q6_SELECT            = "SELECT count(*) FROM q6 WHERE user_min = ? AND user_max = ?"
 
 	RESP_FIRST_LINE = "GiraffeLovers,5148-7320-2582\n"
 	TIME_FORMAT     = "2006-01-02 15:04:05"
@@ -221,12 +219,29 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
 	tweet_time := t.Unix() * 1000
 	//fmt.Println(input, "=>", tweet_time)
 
-	// Query
-	rows, err := q4_stmt.Query(tweet_time)
+	// Select a db server from tweet_time
+        var server_id int
+        if tweet_time <= 1391214220000 {
+          server_id = 0
+        } else if tweet_time <= 1392843568000 {
+          server_id = 1
+        } else if tweet_time <= 1393717600000 {
+          server_id = 2
+        } else if tweet_time <= 1394577062000 {
+          server_id = 3
+        } else {
+          server_id = 4
+        }
+
+        // Query
+	db, index := s.getConnetion(server_id)
+	rows, err := db.Query(Q4_SELECT, tweet_time)
 	if err != nil {
 		log.Fatalf("Error in query: %s", err.Error())
 		return
 	}
+
+        // Get result
 	var tweet_id int64
 	var tweet_text string
 	for rows.Next() {
@@ -237,6 +252,8 @@ func (s Server) q4(resp http.ResponseWriter, req *http.Request) {
 		}
 		buffer.WriteString(fmt.Sprintf("%d:%s\n", tweet_id, tweet_text))
 	}
+
+	s.releaseConnection(server_id, index)
 
 	resp.Write([]byte(buffer.String()))
 }
