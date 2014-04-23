@@ -1,0 +1,13 @@
+select sum(user_id) from q2;  
+select sum(tweet_time) from (select tweet_time from q2 order by tweet_time) as q2;  
+
+select sum(user_id) from q3;  
+select sum(length(retweet_users)) from (select retweet_users from q3 order by retweet_users) as q3; 
+
+select sum(length(place)) from (select place from q5 order by place) as q5; 
+select sum(tweet_time) from (select tweet_time from q5 order by tweet_time) as q5; 
+
+select sum(tweet_time) from (select tweet_time from q4 order by tweet_time) as q4;  
+select sum(tweet_id) from (select tweet_id from q4 order by tweet_id) as q4;  
+select sum(length(tweet_text)) from (select tweet_text from q4 order by tweet_text) as q4; 
+
